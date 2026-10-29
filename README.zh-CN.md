@@ -6,7 +6,7 @@
 
 ## 行业问题
 
-在线策略蒸馏（On-Policy Distillation，OPD）的消费者可能需要在每个因果位置请求不同 token ID 的教师分数。位置选择、候选选择和概率归一化是三个不同问题。紧凑响应本身不能避免稠密 LM Head 计算；候选集条件概率也不等于全词表概率。真实训练消费者是否存在仍待证明。
+在线策略蒸馏（On-Policy Distillation，OPD）的消费者可能需要在每个因果位置请求不同 token ID 的教师分数。位置选择、候选选择和概率归一化是三个不同问题。紧凑响应本身不能避免稠密 LM Head 计算；候选集条件概率也不等于全词表概率。一个开放的 verl 训练实现已提供具体的条件损失消费者，但其完整诊断仍需全词表信息。
 
 ## 已有工作
 
@@ -18,7 +18,7 @@
 
 对于隐藏状态行 `h_t` 和候选集 `C_t`，拟议研究契约获取有序 ID 对应的教师 logits，并只在候选集内归一化。语义一致的稠密参考必须保留因果位移、掩码、模型输出头变换与候选顺序。潜在候选投影需与稠密、分块稠密、eager 索引以及已有融合实现比较。
 
-条件反向 KL 忽略支持集总概率和尾部项，因而不同于全词表 KL。候选数为一时，其损失与局部梯度为零。所核查的 [Rethinking OPD 作者代码](https://github.com/Thinking-Space/Rethinking-OPD/tree/ac26e38d6f1572eb027597b48a9f4e01f6915ef8)使用全归一化 log-ratio 奖励和 PPO surrogate；仅条件化的教师分数不能等价替换。真正消费该条件目标的训练端仍未核实。
+条件反向 KL 忽略支持集总概率和尾部项，因而不同于全词表 KL。候选数为一时，其损失与局部梯度为零。所核查的 [Rethinking OPD 作者代码](https://github.com/Thinking-Space/Rethinking-OPD/tree/ac26e38d6f1572eb027597b48a9f4e01f6915ef8)使用全归一化 log-ratio 奖励和 PPO surrogate；仅条件化的教师分数不能等价替换。开放的 [verl PR #6920](https://github.com/verl-project/verl/pull/6920)实现了学生 Top-K 条件反向 KL，但也计算仅凭候选 logits 无法恢复的教师概率质量及教师 Top-K 诊断。该 PR 报告的训练运行尚未在本项目独立复现。
 
 ## 架构
 
@@ -35,19 +35,21 @@ bash scripts/build_assets.sh
 python3 scripts/verify_assets.py
 ```
 
-[构建环境锁定记录](./docs/build-environment.md)列出本次交付所用的版本与哈希。[随附字体子集](./assets/fonts/README.md)已固定版本，采用 OFL 1.1 许可。添加新文字需要额外字形时，可从 [Noto CJK 项目](https://github.com/notofonts/noto-cjk)安装完整字体，再将 `CJK_FONT` 指向其绝对路径。公开的[基准测试方法](./docs/benchmark-methodology.zh-CN.md)说明拟议实验、基线与报告边界。
+[构建环境锁定记录](./docs/build-environment.md)列出文档构建所用的版本与哈希。[随附字体子集](./assets/fonts/README.md)已固定版本，采用 OFL 1.1 许可。添加新文字需要额外字形时，可从 [Noto CJK 项目](https://github.com/notofonts/noto-cjk)安装完整字体，再将 `CJK_FONT` 指向其绝对路径。公开的[基准测试方法](./docs/benchmark-methodology.zh-CN.md)说明拟议实验、基线与报告边界。
+
+独立的 [G2 参考、真实教师评分命令与观察](./docs/g2-results.zh-CN.md)记录了单独的 Python 环境和固定模型。这些检查不是优化后的服务实现。
 
 ## 已核实结果与局限
 
 | 项目 | 状态 |
 | --- | --- |
-| 源码与文献研究 | 报告引用固定快照和分析；未运行复现 |
-| CPU 数值或梯度测试 | **尚未执行** |
-| GPU 内核或服务基准测试 | **尚未实测** |
-| HTTP 评分或真实训练 | **尚未执行** |
+| 合成数值与梯度参考 | 记录的测试输入在 CPU 和 GPU 上通过 |
+| SGLang 教师评分 | 使用合成候选 ID 的一次真实 BF16 HTTP 冒烟请求通过 |
+| 真实模型数值对照 | **未通过：**32 个数值中有 2 个超过冻结的 BF16 容差 |
+| 代表性性能与真实训练 | **尚未证实**；一次单独轨迹仅用于探索 |
 | 本项目加速、显存或质量收益 | **尚未证实** |
 
-拟议优化与真实消费者均待核实。报告中的运算量和张量大小示例仅为解析值；第三方测量不属于本项目结果。报告为 AI 辅助初稿，作者审核待完成。
+G3 仍为 **HOLD / NEEDS VERIFICATION**。报告中的运算量和张量大小示例仅为解析值；第三方测量不属于本项目结果。作者已审核提交 `c1ab1f4308c2ac1aecf47e222f210a16d0a5a898` 的两份 AI 辅助报告；后续实质性技术修订须重新审核。报告描述已审核快照，新增 G2 观察另行记录，尚未经过作者审核。
 
 ## 报告
 

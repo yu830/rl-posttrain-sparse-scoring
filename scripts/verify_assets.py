@@ -103,8 +103,8 @@ for lang in ('en','zh-CN'):
     m=re.search(r'^Pages:\s+(\d+)',meta,re.M)
     check(bool(m) and int(m.group(1))>=2, f'{lang}: readable multipage PDF')
     text=run('pdftotext',pdf,'-')
-    review='author review pending' if lang=='en' else '作者审核待完成'
-    check(review in text, f'{lang}: draft review status')
+    review='Author reviewed the c1ab1f4 report; AI assisted' if lang=='en' else '作者已审核 c1ab1f4 版报告；AI 辅助'
+    check(review in text, f'{lang}: version-scoped author review and AI assistance')
     for pattern in (r'drive\.google\.com',r'AIINFRA-POSTTRAIN-',r'\bhandoff/',r'\bevidence/',r'AI-assisted engineering writer for'):
         check(not re.search(pattern,text,re.I), f'{lang}: no internal marker {pattern}')
     log=ROOT/f'build/{lang}/technical-report.{lang}.log'
