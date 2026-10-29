@@ -1,0 +1,33 @@
+% Shared equations are included by both language editions.
+\newcommand{\ScoreEquations}{%
+\begin{align}
+z_{t,i} &= h_t^{\mathsf T} W_i+b_i,\\
+\ell^{\mathrm{full}}_{t,i} &= z_{t,i}-\operatorname{LSE}_{j\in\mathcal V}z_{t,j},\\
+\ell^{C}_{t,i} &= z_{t,i}-\operatorname{LSE}_{j\in C_t}z_{t,j}
+=\ell^{\mathrm{full}}_{t,i}-\log Q_t(C_t).
+\end{align}}
+\newcommand{\KLEquations}{%
+\begin{align}
+p_i^C &= \frac{e^{z_i^S/\tau_S}}{\sum_{j\in C} e^{z_j^S/\tau_S}},\qquad
+q_i^C = \frac{e^{z_i^T/\tau_T}}{\sum_{j\in C} e^{z_j^T/\tau_T}},\\
+L_C &= \sum_{i\in C}p_i^C\log\frac{p_i^C}{q_i^C},\\
+\frac{\partial L_C}{\partial z_j^S} &=
+\frac{p_j^C}{\tau_S}\left(\log\frac{p_j^C}{q_j^C}-L_C\right),\quad j\in C.
+\end{align}}
+\newcommand{\Decomposition}{%
+\begin{equation}
+D_{\mathrm{KL}}(P\Vert Q) = D_{\mathrm{Ber}}(\alpha\Vert\beta)
++ \alpha D_{\mathrm{KL}}(P^C\Vert Q^C)
++ (1-\alpha)D_{\mathrm{KL}}(P^{\bar C}\Vert Q^{\bar C}).
+\end{equation}}
+\newcommand{\CounterExample}{%
+\begin{equation}
+P=(0.49,0.49,0.02),\quad Q=(0.005,0.005,0.99),\quad C=\{0,1\}.
+\end{equation}}
+\newcommand{\CostEquations}{%
+\begin{align}
+F_{\mathrm{dense}} &\approx 2RVd, & F_{\mathrm{selected}} &\approx 2RKd,\\
+T &\gtrsim \max(F/P_{\mathrm{eff}}, B/\mathrm{BW}_{\mathrm{eff}})
++T_{\mathrm{launch}}+T_{\mathrm{validate}}+T_{\mathrm{pack}},\\
+S_{\mathrm{request}} &= \frac{1}{(1-f)+f/s}.
+\end{align}}

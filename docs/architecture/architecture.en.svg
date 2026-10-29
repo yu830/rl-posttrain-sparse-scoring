@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 1500" width="1800" height="1500" role="img" aria-labelledby="title desc">
+<title id="title">Teacher scoring: current path and research design</title>
+<desc id="desc">Research design only · no optimized path or GPU result</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#3d5263"/></marker></defs>
+<rect width="1800" height="1500" fill="#ffffff"/>
+<text x="70" y="68" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="46" font-weight="bold" fill="#172d40">Teacher scoring: current path and research design</text>
+<text x="70" y="117" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#576a79">Research design only · no optimized path or GPU result</text>
+<polyline points="550,252 660,252" fill="none" stroke="#3d5263" stroke-width="4" stroke-dasharray="12 8" marker-end="url(#arrow)"/>
+<polyline points="1140,252 1250,252" fill="none" stroke="#3d5263" stroke-width="4" marker-end="url(#arrow)"/>
+<polyline points="1490,325 1490,385 900,385 900,410" fill="none" stroke="#3d5263" stroke-width="4" marker-end="url(#arrow)"/>
+<polyline points="780,560 780,610 310,610 310,660" fill="none" stroke="#3d5263" stroke-width="4" marker-end="url(#arrow)"/>
+<polyline points="1020,560 1020,610 1490,610 1490,660" fill="none" stroke="#3d5263" stroke-width="4" stroke-dasharray="12 8" marker-end="url(#arrow)"/>
+<polyline points="310,810 310,930" fill="none" stroke="#3d5263" stroke-width="4" marker-end="url(#arrow)"/>
+<polyline points="480,810 480,870 900,870 900,930" fill="none" stroke="#3d5263" stroke-width="4" stroke-dasharray="12 8" marker-end="url(#arrow)"/>
+<polyline points="1490,810 1490,930" fill="none" stroke="#3d5263" stroke-width="4" stroke-dasharray="12 8" marker-end="url(#arrow)"/>
+<polyline points="900,1080 900,1220" fill="none" stroke="#3d5263" stroke-width="4" stroke-dasharray="12 8" marker-end="url(#arrow)"/>
+<polyline points="1490,1080 1490,1150 1080,1150 1080,1220" fill="none" stroke="#3d5263" stroke-width="4" stroke-dasharray="12 8" marker-end="url(#arrow)"/>
+<polyline points="1140,1298 1250,1298" fill="none" stroke="#3d5263" stroke-width="4" stroke-dasharray="12 8" marker-end="url(#arrow)"/>
+<rect x="70" y="180" width="480" height="145" rx="14" fill="#fff9ee" stroke="#94611e" stroke-width="3" stroke-dasharray="12 8"/>
+<text x="90" y="225" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#94611e">Candidate source</text>
+<text x="90" y="263" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Student tokens, per-row IDs C(t)</text>
+<text x="90" y="301" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Policy / tokenizer / row mapping</text>
+<rect x="660" y="180" width="480" height="145" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="680" y="225" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">Host ingress</text>
+<text x="680" y="263" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">HTTP / tokenizer manager</text>
+<text x="680" y="301" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Request validation</text>
+<rect x="1250" y="180" width="480" height="145" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="1270" y="225" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">Scheduler / batch</text>
+<text x="1270" y="263" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Offsets, masks, prefill batches</text>
+<text x="1270" y="301" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Causal row alignment</text>
+<rect x="660" y="410" width="480" height="150" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="680" y="455" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">Transformer prefill</text>
+<text x="680" y="493" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Existing model and KV cache</text>
+<text x="680" y="531" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Queried hidden rows H</text>
+<rect x="70" y="660" width="480" height="150" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="90" y="705" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">Dense LM head</text>
+<text x="90" y="743" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Full vocabulary projection</text>
+<text x="90" y="781" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Model / LoRA / quant / TP dispatch</text>
+<rect x="1250" y="660" width="480" height="150" rx="14" fill="#fff9ee" stroke="#94611e" stroke-width="3" stroke-dasharray="12 8"/>
+<text x="1270" y="705" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#94611e">Selected projection</text>
+<text x="1270" y="743" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Compute selected logits only</text>
+<text x="1270" y="781" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Explicit conditional-only branch</text>
+<rect x="70" y="930" width="480" height="150" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="90" y="975" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">Full-normalized output</text>
+<text x="90" y="1013" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Vocabulary-wide normalizer</text>
+<text x="90" y="1051" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Existing scoring semantics</text>
+<rect x="660" y="930" width="480" height="150" rx="14" fill="#fff9ee" stroke="#94611e" stroke-width="3" stroke-dasharray="12 8"/>
+<text x="680" y="975" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#94611e">Dense reference</text>
+<text x="680" y="1013" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="24" font-weight="normal" fill="#233847">Per-row gather + conditional softmax</text>
+<text x="680" y="1051" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="24" font-weight="normal" fill="#233847">Same values and masks as candidate</text>
+<rect x="1250" y="930" width="480" height="150" rx="14" fill="#fff9ee" stroke="#94611e" stroke-width="3" stroke-dasharray="12 8"/>
+<text x="1270" y="975" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#94611e">Selected-logit comparison</text>
+<text x="1270" y="1013" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="24" font-weight="normal" fill="#233847">Eager gather / existing fused baseline</text>
+<text x="1270" y="1051" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Future optimization if justified</text>
+<rect x="70" y="1220" width="480" height="155" rx="14" fill="#f2eff7" stroke="#685780" stroke-width="3"/>
+<text x="90" y="1265" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#685780">Prior art</text>
+<text x="90" y="1303" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">SGLang per-item / PR #38119</text>
+<text x="90" y="1341" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">vLLM per-row / IndexedLogits</text>
+<rect x="660" y="1220" width="480" height="155" rx="14" fill="#fff9ee" stroke="#94611e" stroke-width="3" stroke-dasharray="12 8"/>
+<text x="680" y="1265" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#94611e">Conditional output contract</text>
+<text x="680" y="1303" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Ordered IDs, masks, row lengths</text>
+<text x="680" y="1341" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">No full-logprob equivalence</text>
+<rect x="1250" y="1220" width="480" height="155" rx="14" fill="#fff9ee" stroke="#94611e" stroke-width="3" stroke-dasharray="12 8"/>
+<text x="1270" y="1265" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#94611e">Training consumer</text>
+<text x="1270" y="1303" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Fixed-support reverse KL</text>
+<text x="1270" y="1341" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="22" font-weight="normal" fill="#233847">Teacher detached; consumer unverified</text>
+<rect x="70" y="1431" width="35" height="25" fill="#eaf0f6" stroke="#34516a" stroke-width="2"/>
+<text x="118" y="1455" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="23" font-weight="normal" fill="#233847">Existing upstream</text>
+<rect x="590" y="1431" width="35" height="25" fill="#fff9ee" stroke="#94611e" stroke-width="2"/>
+<text x="638" y="1455" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="23" font-weight="normal" fill="#233847">Proposed / not implemented</text>
+<rect x="1110" y="1431" width="35" height="25" fill="#f2eff7" stroke="#685780" stroke-width="2"/>
+<text x="1158" y="1455" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="23" font-weight="normal" fill="#233847">Prior art</text>
+</svg>

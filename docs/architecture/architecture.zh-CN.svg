@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 1500" width="1800" height="1500" role="img" aria-labelledby="title desc">
+<title id="title">教师评分：现有路径与研究设计</title>
+<desc id="desc">仅为研究设计 · 尚无优化实现或 GPU 结果</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#3d5263"/></marker></defs>
+<rect width="1800" height="1500" fill="#ffffff"/>
+<text x="70" y="68" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="46" font-weight="bold" fill="#172d40">教师评分：现有路径与研究设计</text>
+<text x="70" y="117" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#576a79">仅为研究设计 · 尚无优化实现或 GPU 结果</text>
+<polyline points="550,252 660,252" fill="none" stroke="#3d5263" stroke-width="4" stroke-dasharray="12 8" marker-end="url(#arrow)"/>
+<polyline points="1140,252 1250,252" fill="none" stroke="#3d5263" stroke-width="4" marker-end="url(#arrow)"/>
+<polyline points="1490,325 1490,385 900,385 900,410" fill="none" stroke="#3d5263" stroke-width="4" marker-end="url(#arrow)"/>
+<polyline points="780,560 780,610 310,610 310,660" fill="none" stroke="#3d5263" stroke-width="4" marker-end="url(#arrow)"/>
+<polyline points="1020,560 1020,610 1490,610 1490,660" fill="none" stroke="#3d5263" stroke-width="4" stroke-dasharray="12 8" marker-end="url(#arrow)"/>
+<polyline points="310,810 310,930" fill="none" stroke="#3d5263" stroke-width="4" marker-end="url(#arrow)"/>
+<polyline points="480,810 480,870 900,870 900,930" fill="none" stroke="#3d5263" stroke-width="4" stroke-dasharray="12 8" marker-end="url(#arrow)"/>
+<polyline points="1490,810 1490,930" fill="none" stroke="#3d5263" stroke-width="4" stroke-dasharray="12 8" marker-end="url(#arrow)"/>
+<polyline points="900,1080 900,1220" fill="none" stroke="#3d5263" stroke-width="4" stroke-dasharray="12 8" marker-end="url(#arrow)"/>
+<polyline points="1490,1080 1490,1150 1080,1150 1080,1220" fill="none" stroke="#3d5263" stroke-width="4" stroke-dasharray="12 8" marker-end="url(#arrow)"/>
+<polyline points="1140,1298 1250,1298" fill="none" stroke="#3d5263" stroke-width="4" stroke-dasharray="12 8" marker-end="url(#arrow)"/>
+<rect x="70" y="180" width="480" height="145" rx="14" fill="#fff9ee" stroke="#94611e" stroke-width="3" stroke-dasharray="12 8"/>
+<text x="90" y="225" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#94611e">候选来源</text>
+<text x="90" y="263" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">学生轨迹、逐行候选集 C(t)</text>
+<text x="90" y="301" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">策略 / 分词器 / 位置映射</text>
+<rect x="660" y="180" width="480" height="145" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="680" y="225" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">主机请求入口</text>
+<text x="680" y="263" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">HTTP / 分词器管理器</text>
+<text x="680" y="301" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">请求校验</text>
+<rect x="1250" y="180" width="480" height="145" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="1270" y="225" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">调度与批处理</text>
+<text x="1270" y="263" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">偏移、掩码、预填充批次</text>
+<text x="1270" y="301" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">因果位置对齐</text>
+<rect x="660" y="410" width="480" height="150" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="680" y="455" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">Transformer 预填充</text>
+<text x="680" y="493" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">上游模型与 KV 缓存</text>
+<text x="680" y="531" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">选取隐藏状态行 H</text>
+<rect x="70" y="660" width="480" height="150" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="90" y="705" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">稠密 LM Head</text>
+<text x="90" y="743" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">全词表投影</text>
+<text x="90" y="781" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">模型 / LoRA / 量化 / TP 分发</text>
+<rect x="1250" y="660" width="480" height="150" rx="14" fill="#fff9ee" stroke="#94611e" stroke-width="3" stroke-dasharray="12 8"/>
+<text x="1270" y="705" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#94611e">候选投影</text>
+<text x="1270" y="743" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">仅计算指定候选的 logits</text>
+<text x="1270" y="781" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">显式条件分布分支</text>
+<rect x="70" y="930" width="480" height="150" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="90" y="975" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">全词表归一化输出</text>
+<text x="90" y="1013" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">全词表归一化分母</text>
+<text x="90" y="1051" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">保持现有评分语义</text>
+<rect x="660" y="930" width="480" height="150" rx="14" fill="#fff9ee" stroke="#94611e" stroke-width="3" stroke-dasharray="12 8"/>
+<text x="680" y="975" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#94611e">稠密参考实现</text>
+<text x="680" y="1013" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">逐行筛选 + 条件 softmax</text>
+<text x="680" y="1051" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">与候选路径保持相同语义</text>
+<rect x="1250" y="930" width="480" height="150" rx="14" fill="#fff9ee" stroke="#94611e" stroke-width="3" stroke-dasharray="12 8"/>
+<text x="1270" y="975" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#94611e">候选 logits 对照</text>
+<text x="1270" y="1013" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Eager gather / 已有融合基线</text>
+<text x="1270" y="1051" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">有依据后才考虑优化</text>
+<rect x="70" y="1220" width="480" height="155" rx="14" fill="#f2eff7" stroke="#685780" stroke-width="3"/>
+<text x="90" y="1265" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#685780">已有先例</text>
+<text x="90" y="1303" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">SGLang 逐项 / PR #38119</text>
+<text x="90" y="1341" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">vLLM 逐行 / IndexedLogits</text>
+<rect x="660" y="1220" width="480" height="155" rx="14" fill="#fff9ee" stroke="#94611e" stroke-width="3" stroke-dasharray="12 8"/>
+<text x="680" y="1265" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#94611e">条件输出契约</text>
+<text x="680" y="1303" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">有序 ID、掩码、行长度</text>
+<text x="680" y="1341" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">不等价于全词表 logprob</text>
+<rect x="1250" y="1220" width="480" height="155" rx="14" fill="#fff9ee" stroke="#94611e" stroke-width="3" stroke-dasharray="12 8"/>
+<text x="1270" y="1265" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#94611e">训练端消费者</text>
+<text x="1270" y="1303" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">固定支持集上的反向 KL</text>
+<text x="1270" y="1341" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">教师停止梯度；消费者未证实</text>
+<rect x="70" y="1431" width="35" height="25" fill="#eaf0f6" stroke="#34516a" stroke-width="2"/>
+<text x="118" y="1455" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="23" font-weight="normal" fill="#233847">上游已有</text>
+<rect x="590" y="1431" width="35" height="25" fill="#fff9ee" stroke="#94611e" stroke-width="2"/>
+<text x="638" y="1455" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="23" font-weight="normal" fill="#233847">拟议 / 尚未实现</text>
+<rect x="1110" y="1431" width="35" height="25" fill="#f2eff7" stroke="#685780" stroke-width="2"/>
+<text x="1158" y="1455" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="23" font-weight="normal" fill="#233847">已有先例</text>
+</svg>

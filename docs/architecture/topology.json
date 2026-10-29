@@ -1,0 +1,33 @@
+{
+  "width": 1800, "height": 1500,
+  "title": {"en": "Teacher scoring: current path and research design", "zh-CN": "教师评分：现有路径与研究设计"},
+  "subtitle": {"en": "Research design only · no optimized path or GPU result", "zh-CN": "仅为研究设计 · 尚无优化实现或 GPU 结果"},
+  "nodes": [
+    {"id":"student","kind":"proposed","x":70,"y":180,"w":480,"h":145,"en":["Candidate source", "Student tokens, per-row IDs C(t)", "Policy / tokenizer / row mapping"],"zh-CN":["候选来源", "学生轨迹、逐行候选集 C(t)", "策略 / 分词器 / 位置映射"]},
+    {"id":"ingress","kind":"existing","x":660,"y":180,"w":480,"h":145,"en":["Host ingress", "HTTP / tokenizer manager", "Request validation"],"zh-CN":["主机请求入口", "HTTP / 分词器管理器", "请求校验"]},
+    {"id":"scheduler","kind":"existing","x":1250,"y":180,"w":480,"h":145,"en":["Scheduler / batch", "Offsets, masks, prefill batches", "Causal row alignment"],"zh-CN":["调度与批处理", "偏移、掩码、预填充批次", "因果位置对齐"]},
+    {"id":"prefill","kind":"existing","x":660,"y":410,"w":480,"h":150,"en":["Transformer prefill", "Existing model and KV cache", "Queried hidden rows H"],"zh-CN":["Transformer 预填充", "上游模型与 KV 缓存", "选取隐藏状态行 H"]},
+    {"id":"dense","kind":"existing","x":70,"y":660,"w":480,"h":150,"en":["Dense LM head", "Full vocabulary projection", "Model / LoRA / quant / TP dispatch"],"zh-CN":["稠密 LM Head", "全词表投影", "模型 / LoRA / 量化 / TP 分发"]},
+    {"id":"sparse","kind":"proposed","x":1250,"y":660,"w":480,"h":150,"en":["Selected projection", "Compute selected logits only", "Explicit conditional-only branch"],"zh-CN":["候选投影", "仅计算指定候选的 logits", "显式条件分布分支"]},
+    {"id":"full","kind":"existing","x":70,"y":930,"w":480,"h":150,"en":["Full-normalized output", "Vocabulary-wide normalizer", "Existing scoring semantics"],"zh-CN":["全词表归一化输出", "全词表归一化分母", "保持现有评分语义"]},
+    {"id":"reference","kind":"proposed","x":660,"y":930,"w":480,"h":150,"en":["Dense reference", "Per-row gather + conditional softmax", "Same values and masks as candidate"],"zh-CN":["稠密参考实现", "逐行筛选 + 条件 softmax", "与候选路径保持相同语义"]},
+    {"id":"candidate","kind":"proposed","x":1250,"y":930,"w":480,"h":150,"en":["Selected-logit comparison", "Eager gather / existing fused baseline", "Future optimization if justified"],"zh-CN":["候选 logits 对照", "Eager gather / 已有融合基线", "有依据后才考虑优化"]},
+    {"id":"prior","kind":"prior","x":70,"y":1220,"w":480,"h":155,"en":["Prior art", "SGLang per-item / PR #38119", "vLLM per-row / IndexedLogits"],"zh-CN":["已有先例", "SGLang 逐项 / PR #38119", "vLLM 逐行 / IndexedLogits"]},
+    {"id":"payload","kind":"proposed","x":660,"y":1220,"w":480,"h":155,"en":["Conditional output contract", "Ordered IDs, masks, row lengths", "No full-logprob equivalence"],"zh-CN":["条件输出契约", "有序 ID、掩码、行长度", "不等价于全词表 logprob"]},
+    {"id":"loss","kind":"proposed","x":1250,"y":1220,"w":480,"h":155,"en":["Training consumer", "Fixed-support reverse KL", "Teacher detached; consumer unverified"],"zh-CN":["训练端消费者", "固定支持集上的反向 KL", "教师停止梯度；消费者未证实"]}
+  ],
+  "edges": [
+    {"from":"student","to":"ingress","kind":"proposed","points":[[550,252],[660,252]]},
+    {"from":"ingress","to":"scheduler","kind":"existing","points":[[1140,252],[1250,252]]},
+    {"from":"scheduler","to":"prefill","kind":"existing","points":[[1490,325],[1490,385],[900,385],[900,410]]},
+    {"from":"prefill","to":"dense","kind":"existing","points":[[780,560],[780,610],[310,610],[310,660]]},
+    {"from":"prefill","to":"sparse","kind":"proposed","points":[[1020,560],[1020,610],[1490,610],[1490,660]]},
+    {"from":"dense","to":"full","kind":"existing","points":[[310,810],[310,930]]},
+    {"from":"dense","to":"reference","kind":"proposed","points":[[480,810],[480,870],[900,870],[900,930]]},
+    {"from":"sparse","to":"candidate","kind":"proposed","points":[[1490,810],[1490,930]]},
+    {"from":"reference","to":"payload","kind":"proposed","points":[[900,1080],[900,1220]]},
+    {"from":"candidate","to":"payload","kind":"proposed","points":[[1490,1080],[1490,1150],[1080,1150],[1080,1220]]},
+    {"from":"payload","to":"loss","kind":"proposed","points":[[1140,1298],[1250,1298]]}
+  ],
+  "legend": {"en":["Existing upstream", "Proposed / not implemented", "Prior art"],"zh-CN":["上游已有", "拟议 / 尚未实现", "已有先例"]}
+}

@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "platform": {
+    "os": "Ubuntu 24.04.3 LTS",
+    "architecture": "x86_64",
+    "kernel": "6.18.55",
+    "glibc": "2.39"
+  },
+  "python": {
+    "version": "3.12.14",
+    "pillow": "12.3.0"
+  },
+  "executables": {
+    "xelatex": {
+      "version": "XeTeX 3.141592653-2.6-0.999995 (TeX Live 2023/Debian)",
+      "sha256": "6cf6e1f1e70406cc61dde25fe38b5bd758324e32fe6b5e6d92e34bb6048bae04"
+    },
+    "bibtex": {
+      "version": "BibTeX 0.99d (TeX Live 2023/Debian)",
+      "sha256": "09d80947981f425cf7ca25d8a3bdb32df352fecd4eb00973771edf8598e6edd7"
+    },
+    "pdftoppm": {
+      "version": "pdftoppm version 26.05.0",
+      "sha256": "de772e88ab9977ccde25def9b403bf42675d75f5dd82b19fbd7d8123ad183159"
+    },
+    "pdfinfo": {
+      "version": "pdfinfo version 26.05.0",
+      "sha256": "fee70ade670fb025343aca2b5c3a2aacacb8ed9edce1b716b233b5de924b6bf5"
+    },
+    "pdftotext": {
+      "version": "pdftotext version 24.02.0",
+      "sha256": "0fb98ea179e19154a90202608c164f2a319b79f16576fa6534b2d601033565e7"
+    }
+  },
+  "tex_packages_sha256": {
+    "fontspec.sty": "a13fef368454be939bc947e688700508adbf75b2b3d3dbe9730521808945fe7e",
+    "geometry.sty": "d5d36ad74051ad36288242b51438e2d9a5db2bd6c063b9b5704d0931fbc9f439",
+    "amsmath.sty": "da22219a49c094141141bb29034c438d1ccba8a9afe6cdd5d15b96c15bf56901",
+    "amssymb.sty": "70838b061b56569dd3ed9f339b1bdd1c78ba185de49f27ceae331c97f48b5986",
+    "mathtools.sty": "3bf3c7550c81c3aa1bf4d39c14fe1c31e1e1599bf709c9ba2c180ee609f18c76",
+    "booktabs.sty": "3fe694a5406f84847143e56ba1841385364277cfe7694a9f4bc0072ca8656abc",
+    "tabularx.sty": "92fd9780817710f8cb68dbe8056aab2770145651d4d442df75d5cfba5d82419a",
+    "array.sty": "dc2b9a0057f8455ac0f74960618e7af3de9bf08da0e7078ef8dd0570a2924427",
+    "graphicx.sty": "e9fe8e56401707f18a3d18716dadfd1dab999d02118c82af05691599cedec445",
+    "xcolor.sty": "6d66da8f16088689c2f4995b4e920703cc94faade57911ed7aabd32b04367824",
+    "enumitem.sty": "a217353d233e54e8c0944d87ea2924ec1f20d849a35b749698df03884856e5e3",
+    "fancyhdr.sty": "cc6791065900f898299156662bf8a8d7d462daf2bb9af5a84bca6eb63dcac0a0",
+    "natbib.sty": "d2709be806dc7d5f54daa9a16022ba1451b1322954751b98e38cfad0cc107450",
+    "hyperref.sty": "3e2bd51be23486a776165ebda8bdef7d442c0b779db14652dcc1e40429b1c1ad",
+    "xurl.sty": "5cf09de8dd52b5e77a12145d4987ab4df75a304174d224aa9562eed3dd141ef3",
+    "plainnat.bst": "21eefa76f1c967f5074776fcef096c0f8f2b9e42347e84b62e1dbb121dcae486"
+  },
+  "system_packages": {
+    "lmodern": "2.005-1",
+    "texlive-fonts-recommended": "2023.20240207-1",
+    "texlive-latex-extra": "2023.20240207-1",
+    "texlive-latex-recommended": "2023.20240207-1",
+    "texlive-pictures": "2023.20240207-1",
+    "texlive-xetex": "2023.20240207-1"
+  },
+  "bundled_font_sha256": "56bd5d7eb730ed49aa33ff19e2bbbb8dbb78ddd656797013ad88f63814f6016d",
+  "note": "This is the exact observed build environment fingerprint, not a container image or a guarantee of byte-identical PDFs across timestamps."
+}
