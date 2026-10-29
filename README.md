@@ -2,7 +2,11 @@
 
 # Candidate-Conditioned Teacher Scoring
 
-A systems research project on teacher scoring for language-model post-training. It asks whether an explicit per-position candidate contract and a selected vocabulary projection can improve a real consumer's scoring path while preserving the intended objective. The project is in the **research stage**: there is no project optimization implementation or measured speedup.
+A systems research project on teacher scoring for language-model post-training. The active direction is **Memory-Bounded Teacher Scoring**: an opt-in, single-GPU Qwen2/FSDP path that chunks before the LM head while preserving full-vocabulary candidate logprobs and teacher Top-K. It remains experimental; multi-GPU behavior, production stability and full RL training have not been established.
+
+## Current implementation and measurement
+
+The [memory-bounded integration and complete-forward results](./docs/memory-bounded-teacher.en.md) describe the pinned verl patch, the tested FSDP2/CPU-offload boundary, budget limitations, negative cases, and reproducible commands. The earlier selected-logit fusion proposal did not meet the complete teacher contract; the new path does not change that result.
 
 ## Industrial problem
 
@@ -15,7 +19,7 @@ An on-policy distillation (OPD) consumer may need teacher scores for a different
 - [OmniLens](https://arxiv.org/abs/2608.10260v1) and [IndexedLogits](https://github.com/pettyjohnjn/indexed_logits/tree/6020cb446cde8cb2b74a8fdf90db905a320936c3) provide prior selected-logit work. This project does not claim that primitive as novel.
 - Open [verl PR #7809](https://github.com/verl-project/verl/pull/7809) already implements a vocabulary-tiled, full-normalized selected-logprob path for Megatron student distillation. Its GPU results are third-party claims, not project results.
 
-## Technical approach
+## Earlier research approach
 
 For hidden row `h_t` and candidate set `C_t`, the proposed research contract obtains teacher logits for the ordered IDs and normalizes only over that set. A same-semantics dense reference must preserve causal shifts, masks, model-specific head transforms and candidate order. A potential selected projection must be compared with dense, chunked-dense, eager indexed and existing fused baselines.
 
@@ -25,7 +29,7 @@ Conditional reverse KL differs from full-vocabulary KL because it omits support 
 
 ![English architecture: existing upstream paths, proposed components and prior art](./docs/architecture/architecture.en.png)
 
-The diagram distinguishes **existing upstream**, **proposed and unimplemented**, and **prior art**. [Editable topology](./docs/architecture/topology.json) generates both language editions; [English SVG](./docs/architecture/architecture.en.svg) is also available.
+This historical diagram distinguishes **existing upstream**, **proposed and unimplemented**, and **prior art** for the earlier research snapshot. [Editable topology](./docs/architecture/topology.json) generates both language editions; [English SVG](./docs/architecture/architecture.en.svg) is also available.
 
 ## Reproduction
 
@@ -40,7 +44,7 @@ The [build environment lock](./docs/build-environment.md) records the documentat
 
 The independent [G2 reference, real teacher-scoring commands and observations](./docs/g2-results.en.md) document the separate Python environment and fixed model. These checks are not an optimized serving implementation.
 
-## Verified results and limitations
+## Historical G2 results and limitations
 
 | Item | Status |
 | --- | --- |
@@ -51,7 +55,7 @@ The independent [G2 reference, real teacher-scoring commands and observations](.
 | Representative performance and real training | **NOT ESTABLISHED**; one separate trace is exploratory |
 | Project speedup, memory or quality gain | **NOT ESTABLISHED** |
 
-G3 remains **HOLD / NEEDS VERIFICATION**. Arithmetic or tensor-size examples in the report are analytical only; third-party measurements are not project results. The author reviewed both AI-assisted report editions at commit `c1ab1f4308c2ac1aecf47e222f210a16d0a5a898`; later substantive technical revisions require a new review. The reports describe that reviewed snapshot, while the new G2 observations are recorded separately and have not been author-reviewed.
+The former G3 fusion proposal remains **NO-GO** for the full teacher contract; the current memory-bounded path is evaluated separately. Arithmetic or tensor-size examples in the report are analytical only; third-party measurements are not project results. The author reviewed both AI-assisted report editions at commit `c1ab1f4308c2ac1aecf47e222f210a16d0a5a898`; later substantive technical revisions require a new review. The reports describe that reviewed snapshot, while the new G2 observations are recorded separately and have not been author-reviewed.
 
 ## Report
 

@@ -2,7 +2,11 @@
 
 # 候选集条件教师评分
 
-本项目研究语言模型后训练中的教师评分系统：逐位置候选契约与候选词表投影是否能在保持目标语义的同时改善真实消费者的评分路径。项目目前处于**研究阶段**：尚无本项目优化实现，也没有实测加速结果。
+本项目研究语言模型后训练中的教师评分系统。当前方向是**显存预算约束的 Teacher Scoring**：在单 GPU Qwen2/FSDP 路径中将行分块前移到 LM Head 之前，同时保留全词表归一化候选 logprob 和教师 Top-K。该路径仍处于实验阶段；多卡行为、生产稳定性和完整 RL 训练尚未确立。
+
+## 当前实现与测量
+
+[显存预算约束集成及完整前向结果](./docs/memory-bounded-teacher.zh-CN.md)说明固定 verl 补丁、已测 FSDP2/CPU offload 边界、预算局限、负结果与复现命令。此前仅用融合候选 logits 替换完整教师契约的方案未通过，新路径不改变这一结论。
 
 ## 行业问题
 
@@ -15,7 +19,7 @@
 - [OmniLens](https://arxiv.org/abs/2608.10260v1) 与 [IndexedLogits](https://github.com/pettyjohnjn/indexed_logits/tree/6020cb446cde8cb2b74a8fdf90db905a320936c3) 已有候选 logits 工作；本项目不将该原语称为原创。
 - 开放的 [verl PR #7809](https://github.com/verl-project/verl/pull/7809) 已为 Megatron 学生蒸馏实现词表分块、全归一化的候选 logprob 路径；其 GPU 结果属于第三方声明，不是本项目结果。
 
-## 技术思路
+## 早期研究思路
 
 对于隐藏状态行 `h_t` 和候选集 `C_t`，拟议研究契约获取有序 ID 对应的教师 logits，并只在候选集内归一化。语义一致的稠密参考必须保留因果位移、掩码、模型输出头变换与候选顺序。潜在候选投影需与稠密、分块稠密、eager 索引以及已有融合实现比较。
 
@@ -25,7 +29,7 @@
 
 ![中文架构图：上游已有路径、拟议组件及已有先例](./docs/architecture/architecture.zh-CN.png)
 
-图中区分**上游已有**、**拟议且尚未实现**和**已有先例**。[可编辑拓扑](./docs/architecture/topology.json)生成中英文两个版本；也可查看[中文 SVG](./docs/architecture/architecture.zh-CN.svg)。
+这张历史图区分早期研究快照中的**上游已有**、**拟议且尚未实现**和**已有先例**。[可编辑拓扑](./docs/architecture/topology.json)生成中英文两个版本；也可查看[中文 SVG](./docs/architecture/architecture.zh-CN.svg)。
 
 ## 复现
 
@@ -40,7 +44,7 @@ python3 scripts/verify_assets.py
 
 独立的 [G2 参考、真实教师评分命令与观察](./docs/g2-results.zh-CN.md)记录了单独的 Python 环境和固定模型。这些检查不是优化后的服务实现。
 
-## 已核实结果与局限
+## 历史 G2 结果与局限
 
 | 项目 | 状态 |
 | --- | --- |
@@ -51,7 +55,7 @@ python3 scripts/verify_assets.py
 | 代表性性能与真实训练 | **尚未证实**；一次单独轨迹仅用于探索 |
 | 本项目加速、显存或质量收益 | **尚未证实** |
 
-G3 仍为 **HOLD / NEEDS VERIFICATION**。报告中的运算量和张量大小示例仅为解析值；第三方测量不属于本项目结果。作者已审核提交 `c1ab1f4308c2ac1aecf47e222f210a16d0a5a898` 的两份 AI 辅助报告；后续实质性技术修订须重新审核。报告描述已审核快照，新增 G2 观察另行记录，尚未经过作者审核。
+此前 G3 融合方案对完整教师契约仍为 **NO-GO**；当前显存受控路径单独评估。报告中的运算量和张量大小示例仅为解析值；第三方测量不属于本项目结果。作者已审核提交 `c1ab1f4308c2ac1aecf47e222f210a16d0a5a898` 的两份 AI 辅助报告；后续实质性技术修订须重新审核。报告描述已审核快照，新增 G2 观察另行记录，尚未经过作者审核。
 
 ## 报告
 

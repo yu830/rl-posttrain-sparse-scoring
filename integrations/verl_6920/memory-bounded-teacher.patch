@@ -1,0 +1,215 @@
+diff --git a/verl/trainer/config/distillation/distillation.yaml b/verl/trainer/config/distillation/distillation.yaml
+index dbc452ab..7c63be6f 100644
+--- a/verl/trainer/config/distillation/distillation.yaml
++++ b/verl/trainer/config/distillation/distillation.yaml
+@@ -83,6 +83,9 @@ teacher_models:
+     _target_: verl.workers.config.DistillationTeacherModelConfig
+     key: null
+     model_path: null
++    # FSDP teacher HF-model options; vLLM behavior is unchanged.
++    use_remove_padding: true
++    override_config: {}
+     num_replicas: 0
+     inference:
+       _target_: verl.workers.config.RolloutConfig
+@@ -127,6 +130,12 @@ teacher_fsdp_config:
+   # Teacher is frozen — forward-only.
+   forward_only: true
+ 
++  # Opt-in pre-logits LM-head row chunking; default preserves upstream behavior.
++  teacher_memory_bounded: false
++  teacher_lm_head_chunk_rows: 256
++  # Estimated head allocations only; this is not a total-device memory guarantee.
++  teacher_head_memory_budget_mib: null
++
+   # FSDP backend: "fsdp" (FSDP1) or "fsdp2".
+   strategy: fsdp
+ 
+diff --git a/verl/trainer/ppo/ray_trainer.py b/verl/trainer/ppo/ray_trainer.py
+index 5fa6effe..34884bb4 100644
+--- a/verl/trainer/ppo/ray_trainer.py
++++ b/verl/trainer/ppo/ray_trainer.py
+@@ -1348,7 +1348,11 @@ class RayPPOTrainer:
+                 "(teacher_models has 1 entry) when teacher_backend='fsdp'."
+             )
+         teacher_yaml = next(iter(teacher_models.values()))
+-        model_config = HFModelConfig(path=teacher_yaml.model_path)
++        model_config = HFModelConfig(
++            path=teacher_yaml.model_path,
++            use_remove_padding=teacher_yaml.get("use_remove_padding", True),
++            override_config=dict(teacher_yaml.get("override_config", {})),
++        )
+ 
+         fsdp_cfg = self.config.distillation.teacher_fsdp_config
+         if fsdp_cfg is None:
+diff --git a/verl/workers/config/distillation.py b/verl/workers/config/distillation.py
+index 4c4e7bf6..f3092f9f 100644
+--- a/verl/workers/config/distillation.py
++++ b/verl/workers/config/distillation.py
+@@ -152,6 +152,9 @@ class DistillationTeacherModelConfig(BaseConfig):
+ 
+     key: Optional[str] = None
+     model_path: Optional[str] = None
++    # FSDP teacher model options follow HFModelConfig naming and defaults.
++    use_remove_padding: bool = True
++    override_config: dict = field(default_factory=dict)
+     inference: RolloutConfig = field(default_factory=RolloutConfig)
+     num_replicas: Optional[int] = 0
+ 
+diff --git a/verl/workers/config/engine.py b/verl/workers/config/engine.py
+index 289d9e68..2bf875a8 100644
+--- a/verl/workers/config/engine.py
++++ b/verl/workers/config/engine.py
+@@ -258,6 +258,11 @@ class FSDPEngineConfig(EngineConfig):
+     forward_prefetch: bool = False
+     model_dtype: str = "fp32"
+     use_orig_params: bool = False
++    # Frozen teacher only; disabled keeps the upstream dense-logits path.
++    teacher_memory_bounded: bool = False
++    teacher_lm_head_chunk_rows: int = 256
++    # Estimated head allocations, not a hard bound on total GPU memory.
++    teacher_head_memory_budget_mib: Optional[float] = None
+     mixed_precision: Optional[dict[str, Any]] = None
+     ulysses_sequence_parallel_size: int = 1
+     entropy_from_logits_with_chunking: bool = False
+diff --git a/verl/workers/engine/fsdp/transformer_impl.py b/verl/workers/engine/fsdp/transformer_impl.py
+index 7d1d7047..ca3770f7 100644
+--- a/verl/workers/engine/fsdp/transformer_impl.py
++++ b/verl/workers/engine/fsdp/transformer_impl.py
+@@ -574,6 +574,19 @@ class FSDPEngine(BaseEngine):
+         if self._qat_enabled and not self.engine_config.forward_only:
+             module = self._apply_qat(module)
+ 
++        if self.engine_config.teacher_memory_bounded:
++            if not self.engine_config.forward_only or self.model_config.model_type != "language_model":
++                raise ValueError("memory-bounded teacher scoring requires a forward-only language model")
++            if self._is_lora or self._qat_enabled or self.model_config.use_fused_kernels or self.model_config.use_liger:
++                raise ValueError("memory-bounded teacher scoring does not support LoRA, QAT, Liger, or fused forwards")
++            if self.use_ulysses_sp:
++                raise NotImplementedError("memory-bounded teacher scoring does not support sequence parallelism")
++            from reference.memory_bounded_teacher import install_memory_bounded_teacher
++
++            # Keep parameter registration/tied weights and install before FSDP
++            # replaces child modules or registers its outer forward hooks.
++            install_memory_bounded_teacher(module)
++
+         # Synchronize all distributed processes before proceeding
+         torch.distributed.barrier()
+         if self.rank == 0:
+diff --git a/verl/workers/teacher/fsdp_teacher_worker.py b/verl/workers/teacher/fsdp_teacher_worker.py
+index bd03d07f..da56908b 100644
+--- a/verl/workers/teacher/fsdp_teacher_worker.py
++++ b/verl/workers/teacher/fsdp_teacher_worker.py
+@@ -121,27 +121,91 @@ class TeacherFSDPWorker(TrainingWorker):
+             # Standard input-prep (rmpad / position-id layout), but skip
+             # prepare_model_outputs which would force label-conditioned log_probs.
+             model_inputs, _ = self.engine.prepare_model_inputs(micro_batch=data)
+-            output = self.engine.module(**model_inputs)
+-            logits_rmpad = output.logits.squeeze(0)  # (total_nnz, V)
+-
+-            topk_ids_nested = data["topk_ids"]
+-            assert topk_ids_nested.is_nested, "topk_ids must be a nested tensor"
+-            topk_ids_rmpad = topk_ids_nested.values()  # (total_nnz, K)
+-            assert topk_ids_rmpad.shape[0] == logits_rmpad.shape[0], (
+-                f"topk_ids rmpad shape {topk_ids_rmpad.shape} does not match logits "
+-                f"rmpad shape {logits_rmpad.shape}: trainer must align topk_ids with input_ids."
+-            )
+-
+-            teacher_logp_rmpad = chunked_gather_logprobs(
+-                logits=logits_rmpad,
+-                topk_ids=topk_ids_rmpad,
+-                chunk_size=chunk_size,
+-            )
+-
+-            # Teacher's own top-K IDs at the same width K, for the overlap diagnostics
+-            # only. Indices only — no gradient, no extra V-sized tensor.
+-            k = topk_ids_rmpad.shape[-1]
+-            teacher_topk_ids_rmpad = torch.topk(logits_rmpad, k=k, dim=-1).indices.to(torch.int64)
++            if self.engine_config.teacher_memory_bounded:
++                from integrations.verl_6920.bridge import (
++                    prepare_scoring_layout,
++                    select_teacher_execution_path,
++                    validate_teacher_candidates,
++                )
++                from reference.memory_budget import select_chunk_rows
++
++                if tu.get_non_tensor_data(data=data, key="use_fused_kernels", default=False):
++                    raise ValueError("memory-bounded teacher scoring requires use_fused_kernels=False")
++                layout = prepare_scoring_layout(
++                    data["input_ids"],
++                    data["topk_ids"],
++                    model_inputs,
++                    use_remove_padding=tu.get_non_tensor_data(
++                        data=data, key="use_remove_padding", default=self.model_config.use_remove_padding
++                    ),
++                )
++                k = layout.candidate_ids.shape[-1]
++                validate_teacher_candidates(layout.candidate_ids, self.model_config.hf_config.vocab_size)
++                decision = select_chunk_rows(
++                    layout.candidate_ids.numel() // k,
++                    self.model_config.hf_config.vocab_size,
++                    k,
++                    self.engine._autocast_dtype,
++                    requested_rows=self.engine_config.teacher_lm_head_chunk_rows,
++                    head_memory_budget_mib=self.engine_config.teacher_head_memory_budget_mib,
++                )
++                execution_path = select_teacher_execution_path(
++                    num_model_rows=layout.candidate_ids.numel() // k, decision=decision
++                )
++                logger.info(
++                    "memory_bounded_teacher path=%s chunk_rows=%s requested_rows=%s estimated_bytes=%s "
++                    "budget_bytes=%s reason=%s scope=head_estimate_not_total_device_bound",
++                    execution_path,
++                    decision.rows,
++                    self.engine_config.teacher_lm_head_chunk_rows,
++                    decision.estimated_bytes,
++                    decision.budget_bytes,
++                    decision.reason,
++                )
++                # Enter the ordinary outer FSDP forward exactly once. Never call
++                # .module.model outside it or retry the outer forward after OOM.
++                if execution_path == "dense_full_row_fallback":
++                    # A single full-row tile has no logits-storage benefit. Keep
++                    # reduction outside the FSDP forward, as in the native path.
++                    # Explicit budgets never select this fallback.
++                    output = self.engine.module(**model_inputs)
++                    teacher_logp_rmpad = layout.restore_values(
++                        chunked_gather_logprobs(
++                            logits=output.logits, topk_ids=layout.candidate_ids, chunk_size=chunk_size
++                        )
++                    )
++                    teacher_topk_ids_rmpad = layout.restore_values(torch.topk(output.logits, k=k, dim=-1).indices)
++                else:
++                    output = self.engine.module(
++                        **model_inputs,
++                        teacher_topk_ids=layout.candidate_ids,
++                        teacher_chunk_rows=decision.rows,
++                        use_cache=False,
++                    )
++                    teacher_logp_rmpad = layout.restore_values(output.candidate_logprobs)
++                    teacher_topk_ids_rmpad = layout.restore_values(output.teacher_topk_ids)
++            else:
++                output = self.engine.module(**model_inputs)
++                logits_rmpad = output.logits.squeeze(0)  # (total_nnz, V)
++
++                topk_ids_nested = data["topk_ids"]
++                assert topk_ids_nested.is_nested, "topk_ids must be a nested tensor"
++                topk_ids_rmpad = topk_ids_nested.values()  # (total_nnz, K)
++                assert topk_ids_rmpad.shape[0] == logits_rmpad.shape[0], (
++                    f"topk_ids rmpad shape {topk_ids_rmpad.shape} does not match logits "
++                    f"rmpad shape {logits_rmpad.shape}: trainer must align topk_ids with input_ids."
++                )
++
++                teacher_logp_rmpad = chunked_gather_logprobs(
++                    logits=logits_rmpad,
++                    topk_ids=topk_ids_rmpad,
++                    chunk_size=chunk_size,
++                )
++
++                # Teacher's own top-K IDs at the same width K, for the overlap diagnostics
++                # only. Indices only — no gradient, no extra V-sized tensor.
++                k = topk_ids_rmpad.shape[-1]
++                teacher_topk_ids_rmpad = torch.topk(logits_rmpad, k=k, dim=-1).indices.to(torch.int64)
+ 
+             cu_seqlens = data["input_ids"].offsets()
+             # Move offsets to the same device as values for nested_tensor_from_jagged.

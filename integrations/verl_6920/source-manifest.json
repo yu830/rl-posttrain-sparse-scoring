@@ -1,0 +1,17 @@
+{
+  "repository": "https://github.com/verl-project/verl.git",
+  "commit": "87cd055e872f9fdd7b976fcd797a0934b6dba265",
+  "upstream_pr": 6920,
+  "source_blobs": {
+    "verl/trainer/config/distillation/distillation.yaml": "dbc452ab0733faf8b13216a8742785213724967e",
+    "verl/trainer/ppo/ray_trainer.py": "5fa6effe2210b3e5b8d72cd909599af5f0833cc7",
+    "verl/workers/config/distillation.py": "4c4e7bf69a8912138e8f7ba7758eb1361742ed39",
+    "verl/workers/config/engine.py": "289d9e6894621a0efcaf9f50de01da4fbec2a619",
+    "verl/workers/engine/fsdp/transformer_impl.py": "7d1d70479b7e7142eee13a4c78fad899a35f1412",
+    "verl/workers/teacher/fsdp_teacher_worker.py": "bd03d07fbedbc2be72f77f425a6f4aaa3c8f3f07",
+    "verl/workers/config/model.py": "2eab93679a6c5a3f88d9a7ce48a937570f6b8db2"
+  },
+  "worker_runtime": "NOT_RUN",
+  "description": "Patch and offline layout/source checks do not establish a real verl worker run.",
+  "original_line_endings_preserved": true
+}
