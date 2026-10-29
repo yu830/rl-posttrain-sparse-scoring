@@ -16,6 +16,8 @@ The separate open [verl PR #7806](https://github.com/verl-project/verl/pull/7806
 
 SGLang [46caa545](https://github.com/sgl-project/sglang/tree/46caa54562a97e71d9b937c62875c90b39274b0d) already supports /v1/score with candidate lists per item and optional normalization. [PR #38119](https://github.com/sgl-project/sglang/pull/38119) and [vLLM PR #56984](https://github.com/vllm-project/vllm/pull/56984) are prior per-position interfaces. [vLLM's fixed-revision documentation](https://github.com/vllm-project/vllm/blob/fa3b9d1377219247060d3c8b49eae199c9e7e154/docs/training/prompt_token_id_logprobs.md) specifies next-token alignment and per-row full logprobs. [IndexedLogits](https://github.com/pettyjohnjn/indexed_logits/tree/6020cb446cde8cb2b74a8fdf90db905a320936c3) already provides a selected-logit CUDA primitive; its inspected files did not declare a license. No third-party kernel has been copied.
 
+Open [verl PR #7809](https://github.com/verl-project/verl/pull/7809), head [522514fe](https://github.com/verl-project/verl/blob/522514fe21300c4cf7b3800fd6cd827eb1caa2c9/verl/utils/kernel/linear_topk_log_probs.py), already implements vocabulary-tiled, globally normalized selected logprobs without materializing full student logits for Megatron, including a backward path. Its reported GPU validation is third-party evidence, not a project result. It is relevant prior art for any proposed streaming-head alternative; its student-side contract is not identical to the teacher's full-mass and teacher-top-K diagnostics.
+
 ## Executed observations
 
 | Observation | Result and scope |

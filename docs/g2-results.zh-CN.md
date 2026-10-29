@@ -16,6 +16,8 @@
 
 SGLang [46caa545](https://github.com/sgl-project/sglang/tree/46caa54562a97e71d9b937c62875c90b39274b0d) 的 /v1/score 已支持每个 item 的候选列表和可选归一化。[PR #38119](https://github.com/sgl-project/sglang/pull/38119) 与 [vLLM PR #56984](https://github.com/vllm-project/vllm/pull/56984) 已提供逐位置接口先例。[vLLM 固定版本文档](https://github.com/vllm-project/vllm/blob/fa3b9d1377219247060d3c8b49eae199c9e7e154/docs/training/prompt_token_id_logprobs.md)说明 next-token 位移和逐行全归一化 logprob。[IndexedLogits](https://github.com/pettyjohnjn/indexed_logits/tree/6020cb446cde8cb2b74a8fdf90db905a320936c3) 已有候选 logit CUDA 原语，其核查文件未声明许可证；本项目没有复制第三方内核。
 
+开放的 [verl PR #7809](https://github.com/verl-project/verl/pull/7809)，head 为 [522514fe](https://github.com/verl-project/verl/blob/522514fe21300c4cf7b3800fd6cd827eb1caa2c9/verl/utils/kernel/linear_topk_log_probs.py)，已在 Megatron 学生侧实现词表分块、全词表归一化的候选 logprob，无需物化完整学生 logits，并包含反向路径。其报告的 GPU 验证属于第三方证据，不是本项目结果。任何词表流式输出头方案都必须对照这个先例；学生侧契约并不等于教师概率质量和教师自身 Top-K 诊断。
+
 ## 实际执行的观察
 
 | 观察 | 结果及范围 |
