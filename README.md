@@ -47,6 +47,7 @@ The independent [G2 reference, real teacher-scoring commands and observations](.
 | Synthetic numerical and gradient reference | CPU and GPU checks passed on the recorded fixtures |
 | SGLang teacher scoring | One real BF16 HTTP smoke request passed using synthetic candidate IDs |
 | Real-model numerical comparison | **FAILED:** 2 of 32 values exceeded the frozen BF16 budget |
+| FP32 precision diagnosis | IEEE Triton and torch-native attention passed; TF32 Triton exceeded the fixed budget |
 | Representative performance and real training | **NOT ESTABLISHED**; one separate trace is exploratory |
 | Project speedup, memory or quality gain | **NOT ESTABLISHED** |
 

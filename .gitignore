@@ -5,3 +5,7 @@ build/
 .env
 *.token
 .pytest_cache/
+results/sglang-teacher-fp32-*.json
+results/teacher-hf-fp32-*.json
+results/sglang-teacher-bf16-*.json
+results/teacher-hf-bf16-*.json

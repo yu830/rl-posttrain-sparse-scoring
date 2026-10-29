@@ -31,6 +31,24 @@ SGLang [46caa545](https://github.com/sgl-project/sglang/tree/46caa54562a97e71d9b
 
 [评分记录](../results/sglang-teacher-smoke-20261029.json)包含实际输入、响应和时间；[未通过的对照](../results/teacher-hf-comparison-20261029.json)、[诊断](../results/teacher-precision-diagnostic-20261029.json)、[合成数值记录](../results/g2-reference-20261029.json)和[轨迹摘要](../results/sglang-profile-summary-20261029.json)分别保留各自范围。原始轨迹和未脱敏失败日志保存在私有项目证据区。单次受冷启动和预热影响的请求耗时不是性能基准。
 
+## FP32 精度对照
+
+下列实验重放了相同的 8 个前缀和候选 ID，使用同一固定模型。除第一项启动失败外，FP32 行均将 SGLang 融合算子强制为 PyTorch 回退。TF32 和 IEEE 分别使用全新的独立 Triton 编译缓存；对照采用原先冻结的 FP32 容差 atol=5e-5、rtol=2e-5，未修改阈值。
+
+| 配置 | 结果 | 最大绝对 logprob 误差 | 超出容差 |
+| --- | --- | ---: | ---: |
+| FP32，默认融合算子 | 服务启动失败：已安装的 RMSNorm 内核不支持 Float | — | — |
+| FP32，Triton 注意力，默认精度 | 未通过 | 0.00966835 | 30 / 32 |
+| FP32，Triton 注意力，显式 TF32 | 未通过 | 0.00966835 | 30 / 32 |
+| FP32，Triton 注意力，显式 IEEE | 通过 | 0.00001717 | 0 / 32 |
+| FP32，PyTorch 原生注意力 | 通过 | 0.00002670 | 0 / 32 |
+| BF16，原生注意力、默认融合算子 | 未通过 | 0.30104256 | 3 / 32 |
+| BF16，原生注意力及融合算子 | 未通过 | 0.45039749 | 5 / 32 |
+
+在这 32 个数值上，默认与显式 TF32 的 SGLang 输出相同；显式 TF32 与 IEEE 最大差为 0.00967407。这些对照支持本次 FP32 差异与 Triton FP32 dot 精度模式有关，但没有定位到唯一内核，也没有解释 BF16 的失败。TRITON_F32_DEFAULT 是服务进程内所有符合条件的 Triton FP32 dot 的全局设置。固定版本的 [SGLang extend-attention 源码](https://github.com/sgl-project/sglang/blob/46caa54562a97e71d9b937c62875c90b39274b0d/python/sglang/kernels/ops/attention/extend_attention.py#L795)中有未显式指定输入精度的 dot；[Triton 文档](https://triton-lang.org/main/python-api/generated/triton.language.dot.html)说明了 NVIDIA 上的 FP32 默认值。这是有范围的数值诊断，不是生产补丁或性能结果。较早对照记录中名为 tf32 的字段仅指独立 PyTorch 参考，不代表 SGLang Triton 设置。
+
+[精度对照记录](../results/precision-controls-20261029.json)由[汇总脚本](../scripts/summarize_precision_controls.py)从原始 JSON 生成；其中省略含本机路径的 traceback，源文件哈希对应私有原件。完整输入、输出、配置和逐元素结果仍可查看。这项诊断不改变 G3 的 HOLD 状态。
+
 ## 复现
 
 使用 Python 3.12 和记录的[依赖版本](../requirements-g2.lock)。该列表是平台相关的 uv pip freeze 快照，不含 wheel 哈希，并非跨平台锁文件。SGLang 单独使用固定提交 46caa54562a97e71d9b937c62875c90b39274b0d 安装，设置 SGLANG_BUILD_RUST_EXTS=none；本次构建未编译可选 Rust 扩展。从 Qwen/Qwen2.5-0.5B-Instruct（Apache-2.0）同一修订 7ae557604adf67be50417f59c2c2f167def9a775 下载模型和分词器。实测 model.safetensors SHA-256 为 fdf756fa7fcbe7404d5c60e26bff1a0c8b8aa1f72ced49e7dd0210fe288fb7fe；tokenizer.json SHA-256 为 c0382117ea329cdf097041132f6d735924b697924d6f6fc3945713e96ce87539。
@@ -58,3 +76,13 @@ SGLang [46caa545](https://github.com/sgl-project/sglang/tree/46caa54562a97e71d9b
     python scripts/verify_teacher_hf.py --model-dir "$MODEL_DIR" --smoke results/sglang-teacher-smoke-20261029.json --out results/teacher-hf-comparison-20261029.json
 
 在本次环境下，最后一条命令预期复现已记录的失败，不能解释为测试通过。精度诊断脚本记录单条和 FP32 补充对照；评分脚本的可选 profile 目录可执行单独回放，轨迹汇总脚本接收轨迹和词表大小。请使用独立输出目录保留历史记录。
+
+
+复现成对的 FP32 精度对照时，先将 IEEE_CACHE 与 TF32_CACHE 指向两个新的、不同的目录：
+
+    python scripts/sglang_teacher_smoke.py --dtype float32 --force-native-fused-ops --attention-backend triton --triton-f32-default ieee --triton-cache-dir "$IEEE_CACHE" --model-dir "$MODEL_DIR" --out results/sglang-teacher-fp32-triton-ieee-20261029.json --server-log /tmp/g2-ieee.log
+    python scripts/verify_teacher_hf.py --dtype float32 --model-dir "$MODEL_DIR" --smoke results/sglang-teacher-fp32-triton-ieee-20261029.json --out results/teacher-hf-fp32-triton-ieee-20261029.json
+    python scripts/sglang_teacher_smoke.py --dtype float32 --force-native-fused-ops --attention-backend triton --triton-f32-default tf32 --triton-cache-dir "$TF32_CACHE" --model-dir "$MODEL_DIR" --out results/sglang-teacher-fp32-triton-tf32-20261029.json --server-log /tmp/g2-tf32.log
+    python scripts/verify_teacher_hf.py --dtype float32 --model-dir "$MODEL_DIR" --smoke results/sglang-teacher-fp32-triton-tf32-20261029.json --out results/teacher-hf-fp32-triton-tf32-20261029.json
+
+本次 TF32 对照未通过记录的容差；这两项都不作为性能计时。

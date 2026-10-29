@@ -34,6 +34,13 @@ def main():
     p.add_argument("--server-log", required=True)
     p.add_argument("--startup-timeout", type=float, default=420)
     p.add_argument("--profile-dir", help="optional separate SGLang torch-profiler trace directory")
+    p.add_argument("--dtype", choices=("bfloat16", "float32"), default="bfloat16")
+    p.add_argument("--attention-backend", choices=("triton", "torch_native"), default="triton")
+    p.add_argument("--force-native-fused-ops", action="store_true",
+                   help="force SGLang BaseFusedOp torch backend for numerical diagnosis")
+    p.add_argument("--triton-f32-default", choices=("ieee", "tf32", "tf32x3"),
+                   help="set Triton's FP32 dot precision for a diagnostic run")
+    p.add_argument("--triton-cache-dir", help="isolate Triton JIT cache for a diagnostic run")
     args = p.parse_args()
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -63,20 +70,32 @@ def main():
         port = s.getsockname()[1]
     cmd = [sys.executable, "-m", "sglang.launch_server", "--model-path", args.model_dir,
            "--served-model-name", MODEL_ID, "--host", "127.0.0.1", "--port", str(port),
-           "--dtype", "bfloat16", "--context-length", "2048", "--mem-fraction-static", "0.45",
+           "--dtype", args.dtype, "--context-length", "2048", "--mem-fraction-static", "0.45",
            "--max-running-requests", "4", "--max-total-tokens", "2048",
-           "--chunked-prefill-size", "512", "--disable-cuda-graph", "--attention-backend", "triton"]
+           "--chunked-prefill-size", "512", "--disable-cuda-graph", "--attention-backend", args.attention_backend]
     safe_cmd = ["<PYTHON>" if x == sys.executable else "<MODEL_DIR>" if x == args.model_dir else x for x in cmd]
+    server_env = os.environ.copy()
+    if args.force_native_fused_ops:
+        server_env["SGLANG_FORCE_FUSED_OP_BACKEND"] = "torch"
+    if args.triton_f32_default:
+        server_env["TRITON_F32_DEFAULT"] = args.triton_f32_default
+    if args.triton_cache_dir:
+        server_env["TRITON_CACHE_DIR"] = args.triton_cache_dir
     result = {"status": "NOT_RUN", "model": MODEL_ID, "model_revision": MODEL_REVISION,
               "tokenizer_revision": MODEL_REVISION, "sglang_commit": SGLANG_REVISION,
               "workload_kind": "synthetic_prefixes_and_candidates_not_student_topk",
-              "server_command": safe_cmd, "request": request,
+              "server_command": safe_cmd,
+              "fused_op_backend_override": server_env.get("SGLANG_FORCE_FUSED_OP_BACKEND", "auto"),
+              "triton_f32_default": server_env.get("TRITON_F32_DEFAULT", "triton_default"),
+              "isolated_triton_cache": bool(args.triton_cache_dir),
+              "request": request,
               "response_token_ids": response_ids, "predictor_last_prefix_indices": [len(x) - 1 for x in request["items"]],
               "timing_scope": "one cold/warmup-affected loopback HTTP request; not a performance benchmark"}
     process = None
     try:
         with open(args.server_log, "w", encoding="utf-8") as log:
-            process = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+            process = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT,
+                                       start_new_session=True, env=server_env)
             deadline = time.monotonic() + args.startup_timeout
             url = f"http://127.0.0.1:{port}"
             while time.monotonic() < deadline:
