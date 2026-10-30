@@ -1,0 +1,29 @@
+{
+  "width": 1800, "height": 1500,
+  "title": {"en": "Memory-bounded Teacher scoring", "zh-CN": "显存受控的 Teacher Scoring"},
+  "subtitle": {"en": "Observed single-GPU FSDP2 path and validation boundaries", "zh-CN": "已观察的单 GPU FSDP2 路径及验证边界"},
+  "nodes": [
+    {"id":"student","kind":"existing","x":70,"y":180,"w":480,"h":145,"en":["Student candidates", "Ordered IDs for each valid row", "Padded tokens and attention mask"],"zh-CN":["学生候选", "有效行上的有序候选 ID", "Padded 输入与注意力掩码"]},
+    {"id":"teacher","kind":"existing","x":660,"y":180,"w":480,"h":145,"en":["TeacherFSDPWorker", "Outer FSDP2 forward hooks", "World size 1; CPU offload option"],"zh-CN":["TeacherFSDPWorker", "外层 FSDP2 前向 hooks", "单卡；CPU offload 可选"]},
+    {"id":"scope","kind":"prior","x":1250,"y":180,"w":480,"h":145,"en":["Current support boundary", "Tied Qwen2, padded, BF16", "No multi-rank / Ray claim"],"zh-CN":["当前支持边界", "共享权重 Qwen2、padding、BF16", "不声明多卡 / Ray 成果"]},
+    {"id":"backbone","kind":"existing","x":660,"y":410,"w":480,"h":150,"en":["Transformer and final norm", "Real model forward, no KV cache", "Keep FSDP parameter lifecycle"],"zh-CN":["Transformer 与最终归一化", "真实模型前向，不使用 KV cache", "保留 FSDP 参数生命周期"]},
+    {"id":"dense","kind":"existing","x":70,"y":660,"w":480,"h":150,"en":["A0: native dense head", "Materialize full logits", "Reference or explicit fallback"],"zh-CN":["A0：原生稠密输出头", "物化完整 logits", "参考实现或明确回退"]},
+    {"id":"chunk","kind":"existing","x":1250,"y":660,"w":480,"h":150,"en":["A1: pre-head row chunks", "LM head on bounded row tiles", "No full logits concatenation"],"zh-CN":["A1：输出头前按行分块", "LM Head 按有限行块执行", "不拼接完整 logits"]},
+    {"id":"reduce","kind":"existing","x":660,"y":930,"w":480,"h":150,"en":["Full-vocabulary reduction", "FP32 LSE + candidate gather", "Teacher's own Top-K IDs"],"zh-CN":["全词表归一化与筛选", "FP32 LSE 与候选 gather", "Teacher 自身 Top-K ID"]},
+    {"id":"memory","kind":"prior","x":70,"y":930,"w":480,"h":150,"en":["Budget is an estimate", "Head rows selected before forward", "Not a whole-device hard limit"],"zh-CN":["预算为估算", "前向前选择输出头分块行数", "不是整卡显存硬上限"]},
+    {"id":"future","kind":"proposed","x":1250,"y":930,"w":480,"h":150,"en":["Not established", "Multi-GPU / packed varlen / Ray", "Full RL training or speedup"],"zh-CN":["尚未验证", "多卡 / packed varlen / Ray", "完整 RL 训练及加速"]},
+    {"id":"output","kind":"existing","x":660,"y":1220,"w":480,"h":155,"en":["Compact Worker output", "CPU nested tensors and offsets", "Candidate logp + Teacher Top-K"],"zh-CN":["Worker 紧凑输出", "CPU nested tensor 与 offsets", "候选 logp 与 Teacher Top-K"]},
+    {"id":"consumer","kind":"existing","x":1250,"y":1220,"w":480,"h":155,"en":["Loss and Student check", "Response mask before metrics", "Restricted RMSNorm update"],"zh-CN":["Loss 与 Student 验证", "统计前应用 response mask", "仅最终 RMSNorm 更新"]}
+  ],
+  "edges": [
+    {"from":"student","to":"teacher","kind":"existing","points":[[550,252],[660,252]]},
+    {"from":"teacher","to":"backbone","kind":"existing","points":[[900,325],[900,410]]},
+    {"from":"backbone","to":"dense","kind":"existing","points":[[780,560],[780,610],[310,610],[310,660]]},
+    {"from":"backbone","to":"chunk","kind":"existing","points":[[1020,560],[1020,610],[1490,610],[1490,660]]},
+    {"from":"dense","to":"reduce","kind":"existing","points":[[310,810],[310,870],[780,870],[780,930]]},
+    {"from":"chunk","to":"reduce","kind":"existing","points":[[1490,810],[1490,870],[1020,870],[1020,930]]},
+    {"from":"reduce","to":"output","kind":"existing","points":[[900,1080],[900,1220]]},
+    {"from":"output","to":"consumer","kind":"existing","points":[[1140,1298],[1250,1298]]}
+  ],
+  "legend": {"en":["Implemented in stated scope", "Not established", "Boundary / estimate"],"zh-CN":["限定范围内已实现", "尚未验证", "边界 / 估算"]}
+}

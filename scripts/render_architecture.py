@@ -15,11 +15,13 @@ COLORS = {'existing': ('#eaf0f6', '#34516a'), 'proposed': ('#fff9ee', '#94611e')
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--font', default=os.environ.get('CJK_FONT', '/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc'))
+    parser.add_argument('--topology', type=Path, default=DATA, help='editable bilingual topology JSON')
+    parser.add_argument('--output-stem', default='architecture', help='output filename stem in docs/architecture')
     args = parser.parse_args()
     font = Path(args.font)
     if not font.is_file():
         raise SystemExit('Set CJK_FONT to an installed Noto Serif CJK font file: ' + str(font))
-    data = json.loads(DATA.read_text(encoding='utf8'))
+    data = json.loads(args.topology.read_text(encoding='utf8'))
     for lang in ('en', 'zh-CN'):
         W, H = data['width'], data['height']
         svg = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" role="img" aria-labelledby="title desc">',
@@ -75,8 +77,8 @@ def main():
             draw.rectangle((x,y-24,x+35,y+1),fill=fill,outline=stroke,width=2)
             text(x+48,y,label,23,'#233847',small)
         svg.append('</svg>')
-        (OUT/f'architecture.{lang}.svg').write_text('\n'.join(svg)+'\n',encoding='utf8')
-        im.save(OUT/f'architecture.{lang}.png', optimize=True)
+        (OUT/f'{args.output_stem}.{lang}.svg').write_text('\n'.join(svg)+'\n',encoding='utf8')
+        im.save(OUT/f'{args.output_stem}.{lang}.png', optimize=True)
         print('rendered',lang)
 
 if __name__ == '__main__':

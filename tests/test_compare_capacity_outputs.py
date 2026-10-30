@@ -72,3 +72,15 @@ def test_mutated_tensor_fails_producer_hash():
     candidate["candidate_logprobs"][0, 0] = -1.5
     with pytest.raises(ValueError, match="producer signature"):
         compare_artifacts(dense, candidate)
+
+
+def test_ordered_topk_difference_is_reported_separately_from_set_equality():
+    dense, candidate = artifact(), artifact()
+    candidate["teacher_topk_ids"][0] = candidate["teacher_topk_ids"][0].flip(0)
+    refresh(candidate, "teacher_topk_ids")
+    result = compare_artifacts(dense, candidate)
+    # Compact IDs alone cannot prove whether a changed order is a true tie.
+    assert result["status"] == "FAIL_OR_TIE_UNKNOWN"
+    assert result["teacher_topk"]["exact_set_equal"]
+    assert not result["teacher_topk"]["ordered_exact_equal"]
+    assert result["teacher_topk"]["ordered_equal_rows"] == 1

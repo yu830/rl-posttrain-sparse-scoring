@@ -154,6 +154,40 @@ def worker_output_snapshot(output):
     }
 
 
+def response_diagnostics(outputs, response_mask, topk):
+    """Aggregate padded outputs with the pinned trainer's response-only semantics.
+
+    Raw outputs remain untouched. The loss range is measured after the reverse-KL
+    nonnegative clamp but before loss_max_clamp, as in trainer/distillation/losses.py
+    at verl 87cd055 (lines 300-307, 479-516). This is a local-batch diagnostic,
+    not distributed Metric aggregation or the optimization loss itself.
+    """
+    mask = response_mask.bool()
+    if not mask.any():
+        raise ValueError("response diagnostics require at least one response token")
+    if topk <= 0:
+        raise ValueError("topk must be positive")
+    metrics = {}
+    with torch.no_grad():
+        for name in ("student_mass", "teacher_mass"):
+            valid = outputs[name][mask]
+            metrics[f"distillation/{name}"] = valid.mean().item()
+            metrics[f"distillation/{name}_min"] = valid.min().item()
+            metrics[f"distillation/{name}_max"] = valid.max().item()
+        valid_loss = outputs["distillation_losses"][mask].clamp_min(0)
+        metrics["distillation/loss_min"] = valid_loss.min().item()
+        metrics["distillation/loss_max"] = valid_loss.max().item()
+        overlap_count = outputs.get("overlap_count")
+        overlap_advantage = outputs.get("overlap_token_advantage")
+        if overlap_count is not None and overlap_advantage is not None:
+            metrics["distillation/overlap_ratio"] = (overlap_count[mask].float().mean() / topk).item()
+            overlap_mask = mask & (overlap_count > 0)
+            metrics["distillation/overlap_token_advantage"] = (
+                overlap_advantage[overlap_mask].mean().item() if overlap_mask.any() else 0.0
+            )
+    return metrics
+
+
 def load_upstream(directory, report):
     head = subprocess.check_output(["git", "-C", str(directory), "rev-parse", "HEAD"], text=True).strip()
     if head != VERL_SHA:
@@ -374,7 +408,11 @@ def update_student(student, initial_norm, teacher_output, inputs, ids, response_
         "changed_parameter_elements": (updated != initial).sum().item(),
         "parameter_delta_l2": (updated - initial).norm().item(),
         "hashes": {name: tensor_hash(value) for name, value in values.items()},
+        # Keep full tensors as evidence; only response_metrics are aggregate diagnostics.
         "diagnostics": {name: value.detach().cpu().tolist() for name, value in outputs.items()},
+        "diagnostics_scope": "raw unmasked per-token evidence; prompt/padding values are not metrics",
+        "response_metrics": response_diagnostics(outputs, response_mask, args.topk),
+        "response_metric_scope": "local batch; response mask, plus overlap_count > 0 for advantage",
     }
     del logits, optimizer, teacher_logp, teacher_ids
     return values, raw

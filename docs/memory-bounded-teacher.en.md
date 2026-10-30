@@ -8,6 +8,24 @@ The adapter is installed before FSDP wrapping. Its ordinary model call executes 
 
 Current support is limited to tied-embedding Qwen2, ordinary dense head, BF16/FP32, one GPU / world size one, no cache and no teacher gradients. Unsupported multi-rank, untied head, LoRA, quantized/QAT, Liger, fused model forward and sequence-parallel configurations are rejected. Multiple sequences are supported through padded input and the real attention mask; packed multi-sequence varlen attention is not yet verified and is rejected. The budget estimates readout allocations; it is not a hard bound on full-model memory, other processes, fragmentation or CUDA workspace.
 
+## Experimental release: real Worker and mask checks
+
+The fixed actual `TeacherFSDPWorker` was exercised in independent processes with the pinned Qwen2.5-0.5B BF16 model, FSDP2 CPU offload, SDPA, K=32 and 256-row chunks. At N=8192, Dense and Chunked both at allocator fraction 0.50 matched all 262,144 candidate logprobs and all 8192 ordered Teacher Top-K rows exactly. At N=9216, Chunked at 0.50 matched a Dense 0.55 correctness reference for all 294,912 values and 9216 ordered Top-K rows. Both long inputs were single sequences; a separate 64/37 padded fixture checked 101 rows and the real attention mask, offsets and hooks.
+
+| Worker condition | Dense / Chunked peak allocated MiB | Dense / Chunked peak reserved MiB |
+| --- | ---: | ---: |
+| N=8192, both fraction 0.50 | 3596.638 / 681.630 | 3844 / 866 |
+| N=9216, Dense 0.55 / Chunked 0.50 | 3893.700 / 683.962 | 4144 / 884 |
+| N=1024, no artificial fraction, A/A and B/B | 1517.071 / 665.306 | 2644 / 1124 |
+
+The no-fraction case was an ABBA sequence of four fresh processes, each with one warmup and three measured calls; each recorded actual fraction 1.0 and did not call the fraction setter. All A/A, B/B and A/B compact outputs matched. The 100 ms all-device maxima were 4990/5120 MiB in the Dense processes and 3584/3332 MiB in the Chunked processes; they include other activity and may miss peaks. Perf-counter samples ranged 175.754–200.623 ms for Dense and 161.573–191.955 ms for Chunked. Clock disagreement persists, so no speedup is asserted, and the no-fraction capacity ceiling was not measured.
+
+The pinned trainer already applies the response mask to its aggregate metrics. The local diagnostic now does the same, including its positive-overlap condition; CPU tests compare the real fixed upstream functions with a hand-calculated oracle and exclude prompt/padding extremes or NaNs. A CPU replay of the earlier I1 record preserves its padding `teacher_mass=8.0` but excludes that row: over 25 response rows the teacher-mass mean/max are 0.732026/0.999786. The optimization loss and gradients are unchanged. This replay is not a new GPU training step.
+
+An independent review identified a device-sampler failure exit-status gap; the probe now retains the Worker result and fails the overall observation if sampling is unavailable. All ten measured Worker processes had sampler failure `null`; the measured source snapshot is retained separately. Two initial preflights were NOT_RUN because the recorded resource gate was not met, and an initial CPU import-order failure was corrected before GPU execution.
+
+[Experimental reproduction](experimental-reproduction.md) includes commands, setup and test boundaries. The [English LaTeX report](reports/memory-bounded-experimental.en.pdf) and its editable source remain pending Human review.
+
 ## 30 October follow-up: stability, capacity and consumer
 
 The first Worker CUDA `unknown error` remains unexplained. A controlled 2×2 experiment used three fresh FSDP2 processes for each dense/chunked and CPU-offload on/off condition, with two warmups and 30 checked calls per process. All 384 calls matched the same compact reference and the actual FSDP policies matched the requested settings. Two additional real Worker processes completed 32 calls each with per-call output hashes and offsets checked. These tests did not reproduce the failure and do not prove its cause or long-term stability.

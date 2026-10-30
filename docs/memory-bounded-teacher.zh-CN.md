@@ -8,6 +8,24 @@
 
 目前仅支持共享输入/输出 embedding 的 Qwen2、普通稠密头、BF16/FP32、单 GPU / world size 1、无缓存及无教师梯度。多 rank、未共享权重、LoRA、量化/QAT、Liger、融合模型 forward 和序列并行会被明确拒绝。多序列使用 padded 输入和真实 attention mask；多序列 packed/varlen 注意力尚未验证，当前拒绝。预算只估算读取头分配，不能保证完整模型、其他进程、碎片或 CUDA workspace 的总显存上界。
 
+## 实验版：真实 Worker 与 mask 验证
+
+使用固定真实 `TeacherFSDPWorker`、Qwen2.5-0.5B BF16、FSDP2 CPU offload、SDPA、K=32 和 256 行分块，在独立进程中进行对照。N=8192 时 Dense 与 Chunked 均使用 allocator fraction 0.50，262,144 个候选 logprob 与全部 8192 行有序 Teacher Top-K 完全一致。N=9216 时 Chunked 0.50 与 Dense 0.55 正确性参考的 294,912 个候选值及 9216 行有序 Top-K 完全一致。长输入为单序列；另用 64/37 长度的 padded 输入检查 101 行及真实 attention mask、offset 和 hooks。
+
+| Worker 条件 | Dense / Chunked allocated 峰值 MiB | Dense / Chunked reserved 峰值 MiB |
+| --- | ---: | ---: |
+| N=8192，均为 fraction 0.50 | 3596.638 / 681.630 | 3844 / 866 |
+| N=9216，Dense 0.55 / Chunked 0.50 | 3893.700 / 683.962 | 4144 / 884 |
+| N=1024，无人工 fraction，A/A 与 B/B | 1517.071 / 665.306 | 2644 / 1124 |
+
+无人工 fraction 的 ABBA 对照使用四个新进程，每个进程预热 1 次、计数 3 次；记录的实际 fraction 均为 1.0，未调用 fraction setter。A/A、B/B、A/B 紧凑输出均一致。`nvidia-smi` 100 ms 全设备最大采样分别为 Dense 两进程 4990/5120 MiB、Chunked 两进程 3584/3332 MiB，包含其他活动且可能漏峰。Dense 的 perf-counter 计数样本范围为 175.754–200.623 ms，Chunked 为 161.573–191.955 ms；时钟分歧仍未解决，不声明加速，也未测无人工 fraction 的容量上限。
+
+固定 Trainer 的指标汇总原本就使用 response mask；本地诊断现按相同规则汇总，overlap advantage 还要求正 overlap。CPU 回归比较实际固定上游函数和手算结果，并验证 prompt/padding 极值或 NaN 不污染指标。对早期 I1 记录的 CPU 重放保留 padding 行 `teacher_mass=8.0`，但从汇总中排除它：25 个 response 行的 teacher mass 均值/最大值为 0.732026/0.999786。优化 Loss 与梯度不变；这不是新增 GPU 训练步骤。
+
+独立审查发现设备采样失败时的退出状态缺口；probe 已改为保留 Worker 结果并将观测不完整标为失败。本轮十个完成的 Worker 进程的 sampler failure 均为 `null`，实际测量源码快照单独保留。开始时两次预检查因资源门不足为 NOT_RUN；一次 CPU 导入顺序错误在 GPU 执行前修正。
+
+[实验复现说明](experimental-reproduction.md)列出命令、环境与测试边界。[中文 LaTeX 报告](reports/memory-bounded-experimental.zh-CN.pdf)及可编辑源仍待 Human 审核。
+
 ## 10 月 30 日补充：稳定性、容量与消费链
 
 首次真实 Worker 的 CUDA `unknown error` 仍未解释。受控 2×2 实验对 dense/chunked 与 FSDP2 CPU offload on/off 的每种组合各使用 3 个新进程、每进程 2 次预热和 30 次校验调用。384 次调用均匹配同一紧凑输出参考，实际 FSDP 策略与请求一致。另有两个真实 Worker 进程分别完成 32 次逐次哈希和 offsets 检查。这些测试未重现异常，不能证明根因或长期稳定性。

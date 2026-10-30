@@ -27,11 +27,19 @@ Conditional reverse KL differs from full-vocabulary KL because it omits support 
 
 ## Architecture
 
+![Current memory-bounded Teacher scoring path](./docs/architecture/memory-bounded.en.png)
+
+The current diagram shows the single-GPU FSDP2 execution boundary, the pre-head row-chunked and dense fallback paths, and the response-mask boundary. The [editable bilingual topology](./docs/architecture/memory-bounded-topology.json) and [English SVG](./docs/architecture/memory-bounded.en.svg) generate the same diagram; unsupported and unverified paths remain explicit.
+
+### Earlier research snapshot
+
 ![English architecture: existing upstream paths, proposed components and prior art](./docs/architecture/architecture.en.png)
 
 This historical diagram distinguishes **existing upstream**, **proposed and unimplemented**, and **prior art** for the earlier research snapshot. [Editable topology](./docs/architecture/topology.json) generates both language editions; [English SVG](./docs/architecture/architecture.en.svg) is also available.
 
 ## Reproduction
+
+The [experimental Worker reproduction](./docs/experimental-reproduction.md) covers the fixed environment, long-sequence Dense/Chunked comparison, no-fraction ABBA controls and response-mask tests.
 
 These commands rebuild the documentation, not a scoring service or benchmark. Requirements: XeLaTeX, BibTeX, Poppler (`pdftoppm`, `pdfinfo`, `pdftotext`), Python 3 with Pillow, and the bundled limited-glyph font. For example:
 
@@ -58,6 +66,10 @@ The independent [G2 reference, real teacher-scoring commands and observations](.
 The former G3 fusion proposal remains **NO-GO** for the full teacher contract; the current memory-bounded path is evaluated separately. Arithmetic or tensor-size examples in the report are analytical only; third-party measurements are not project results. The author reviewed both AI-assisted report editions at commit `c1ab1f4308c2ac1aecf47e222f210a16d0a5a898`; later substantive technical revisions require a new review. The reports describe that reviewed snapshot, while the new G2 observations are recorded separately and have not been author-reviewed.
 
 ## Report
+
+[Experimental memory-bounded report (PDF)](./docs/reports/memory-bounded-experimental.en.pdf) · [Editable LaTeX](./docs/reports/memory-bounded-experimental.en.tex). This AI-assisted edition contains new results awaiting Human review.
+
+The earlier report is retained as its originally reviewed research snapshot:
 
 [![English technical report cover](./assets/report-cover.en.png)](./docs/reports/technical-report.en.pdf)
 

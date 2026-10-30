@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 1500" width="1800" height="1500" role="img" aria-labelledby="title desc">
+<title id="title">Memory-bounded Teacher scoring</title>
+<desc id="desc">Observed single-GPU FSDP2 path and validation boundaries</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#3d5263"/></marker></defs>
+<rect width="1800" height="1500" fill="#ffffff"/>
+<text x="70" y="68" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="46" font-weight="bold" fill="#172d40">Memory-bounded Teacher scoring</text>
+<text x="70" y="117" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#576a79">Observed single-GPU FSDP2 path and validation boundaries</text>
+<polyline points="550,252 660,252" fill="none" stroke="#3d5263" stroke-width="4" marker-end="url(#arrow)"/>
+<polyline points="900,325 900,410" fill="none" stroke="#3d5263" stroke-width="4" marker-end="url(#arrow)"/>
+<polyline points="780,560 780,610 310,610 310,660" fill="none" stroke="#3d5263" stroke-width="4" marker-end="url(#arrow)"/>
+<polyline points="1020,560 1020,610 1490,610 1490,660" fill="none" stroke="#3d5263" stroke-width="4" marker-end="url(#arrow)"/>
+<polyline points="310,810 310,870 780,870 780,930" fill="none" stroke="#3d5263" stroke-width="4" marker-end="url(#arrow)"/>
+<polyline points="1490,810 1490,870 1020,870 1020,930" fill="none" stroke="#3d5263" stroke-width="4" marker-end="url(#arrow)"/>
+<polyline points="900,1080 900,1220" fill="none" stroke="#3d5263" stroke-width="4" marker-end="url(#arrow)"/>
+<polyline points="1140,1298 1250,1298" fill="none" stroke="#3d5263" stroke-width="4" marker-end="url(#arrow)"/>
+<rect x="70" y="180" width="480" height="145" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="90" y="225" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">Student candidates</text>
+<text x="90" y="263" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Ordered IDs for each valid row</text>
+<text x="90" y="301" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Padded tokens and attention mask</text>
+<rect x="660" y="180" width="480" height="145" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="680" y="225" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">TeacherFSDPWorker</text>
+<text x="680" y="263" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Outer FSDP2 forward hooks</text>
+<text x="680" y="301" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">World size 1; CPU offload option</text>
+<rect x="1250" y="180" width="480" height="145" rx="14" fill="#f2eff7" stroke="#685780" stroke-width="3"/>
+<text x="1270" y="225" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#685780">Current support boundary</text>
+<text x="1270" y="263" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Tied Qwen2, padded, BF16</text>
+<text x="1270" y="301" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">No multi-rank / Ray claim</text>
+<rect x="660" y="410" width="480" height="150" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="680" y="455" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">Transformer and final norm</text>
+<text x="680" y="493" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Real model forward, no KV cache</text>
+<text x="680" y="531" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Keep FSDP parameter lifecycle</text>
+<rect x="70" y="660" width="480" height="150" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="90" y="705" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">A0: native dense head</text>
+<text x="90" y="743" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Materialize full logits</text>
+<text x="90" y="781" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Reference or explicit fallback</text>
+<rect x="1250" y="660" width="480" height="150" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="1270" y="705" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">A1: pre-head row chunks</text>
+<text x="1270" y="743" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">LM head on bounded row tiles</text>
+<text x="1270" y="781" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">No full logits concatenation</text>
+<rect x="660" y="930" width="480" height="150" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="680" y="975" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">Full-vocabulary reduction</text>
+<text x="680" y="1013" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">FP32 LSE + candidate gather</text>
+<text x="680" y="1051" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Teacher's own Top-K IDs</text>
+<rect x="70" y="930" width="480" height="150" rx="14" fill="#f2eff7" stroke="#685780" stroke-width="3"/>
+<text x="90" y="975" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#685780">Budget is an estimate</text>
+<text x="90" y="1013" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Head rows selected before forward</text>
+<text x="90" y="1051" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Not a whole-device hard limit</text>
+<rect x="1250" y="930" width="480" height="150" rx="14" fill="#fff9ee" stroke="#94611e" stroke-width="3" stroke-dasharray="12 8"/>
+<text x="1270" y="975" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#94611e">Not established</text>
+<text x="1270" y="1013" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Multi-GPU / packed varlen / Ray</text>
+<text x="1270" y="1051" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Full RL training or speedup</text>
+<rect x="660" y="1220" width="480" height="155" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="680" y="1265" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">Compact Worker output</text>
+<text x="680" y="1303" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">CPU nested tensors and offsets</text>
+<text x="680" y="1341" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Candidate logp + Teacher Top-K</text>
+<rect x="1250" y="1220" width="480" height="155" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="1270" y="1265" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">Loss and Student check</text>
+<text x="1270" y="1303" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Response mask before metrics</text>
+<text x="1270" y="1341" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Restricted RMSNorm update</text>
+<rect x="70" y="1431" width="35" height="25" fill="#eaf0f6" stroke="#34516a" stroke-width="2"/>
+<text x="118" y="1455" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="23" font-weight="normal" fill="#233847">Implemented in stated scope</text>
+<rect x="590" y="1431" width="35" height="25" fill="#fff9ee" stroke="#94611e" stroke-width="2"/>
+<text x="638" y="1455" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="23" font-weight="normal" fill="#233847">Not established</text>
+<rect x="1110" y="1431" width="35" height="25" fill="#f2eff7" stroke="#685780" stroke-width="2"/>
+<text x="1158" y="1455" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="23" font-weight="normal" fill="#233847">Boundary / estimate</text>
+</svg>

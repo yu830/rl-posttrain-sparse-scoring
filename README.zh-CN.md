@@ -27,11 +27,19 @@
 
 ## 架构
 
+![当前显存受控 Teacher Scoring 架构](./docs/architecture/memory-bounded.zh-CN.png)
+
+当前架构图展示单 GPU FSDP2 执行边界、输出头前的行分块与稠密回退，以及 response mask 的消费边界。[可编辑的双语拓扑](./docs/architecture/memory-bounded-topology.json)与[中文 SVG](./docs/architecture/memory-bounded.zh-CN.svg)对应同一张图；不支持或未验证的路径均明确标注。
+
+### 早期研究快照
+
 ![中文架构图：上游已有路径、拟议组件及已有先例](./docs/architecture/architecture.zh-CN.png)
 
 这张历史图区分早期研究快照中的**上游已有**、**拟议且尚未实现**和**已有先例**。[可编辑拓扑](./docs/architecture/topology.json)生成中英文两个版本；也可查看[中文 SVG](./docs/architecture/architecture.zh-CN.svg)。
 
 ## 复现
+
+[实验版 Worker 复现说明](./docs/experimental-reproduction.md)列出固定环境、长序列 Dense/Chunked 对照、无人工 fraction 的 ABBA 对照和 response mask 测试。
 
 以下命令重建文档，不会运行评分服务或基准测试。依赖：XeLaTeX、BibTeX、Poppler（`pdftoppm`、`pdfinfo`、`pdftotext`）、带 Pillow 的 Python 3，以及随仓库提供的有限字符集字体。例如：
 
@@ -58,6 +66,10 @@ python3 scripts/verify_assets.py
 此前 G3 融合方案对完整教师契约仍为 **NO-GO**；当前显存受控路径单独评估。报告中的运算量和张量大小示例仅为解析值；第三方测量不属于本项目结果。作者已审核提交 `c1ab1f4308c2ac1aecf47e222f210a16d0a5a898` 的两份 AI 辅助报告；后续实质性技术修订须重新审核。报告描述已审核快照，新增 G2 观察另行记录，尚未经过作者审核。
 
 ## 报告
+
+[显存受控实验技术报告（PDF）](./docs/reports/memory-bounded-experimental.zh-CN.pdf) · [可编辑 LaTeX](./docs/reports/memory-bounded-experimental.zh-CN.tex)。本版由 AI 辅助整理，新增结果等待 Human 审核。
+
+下方旧报告保留原已审核研究快照：
 
 [![中文技术报告封面](./assets/report-cover.zh-CN.png)](./docs/reports/technical-report.zh-CN.pdf)
 

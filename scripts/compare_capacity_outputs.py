@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Compare saved CPU compact outputs from independent capacity probes.
 
-This accepts only tensor files written by factorial_teacher_probe and uses
-weights_only loading. A top-K set difference is reported as an unresolved tie
-or mismatch because compact outputs alone do not contain the full reference
-logits needed to prove an exact boundary tie.
+This accepts compact tensor artifacts and uses weights_only loading. A top-K
+order or set difference is reported as an unresolved tie or mismatch because
+compact outputs do not contain the full reference logits needed to prove ties.
 """
 from __future__ import annotations
 
@@ -83,19 +82,23 @@ def compare_artifacts(dense, candidate):
     close = finite & torch.isclose(left.float(), right.float(), atol=atol, rtol=rtol)
     delta = (left.float() - right.float()).abs()
     equal_rows = (left_ids.sort(-1).values == right_ids.sort(-1).values).all(-1)
+    ordered_equal_rows = (left_ids == right_ids).all(-1)
     logprob_ok = bool(close.all())
-    topk_ok = bool(equal_rows.all())
+    topk_set_ok = bool(equal_rows.all())
+    topk_ok = bool(ordered_equal_rows.all())
     return {
         "status": "PASS" if logprob_ok and topk_ok else "FAIL_OR_TIE_UNKNOWN",
-        "scope": "all saved compact rows and candidates; exact top-K sets; no full-logits tie oracle",
+        "scope": "all saved compact rows and candidates; exact ordered top-K; no full-logits tie oracle",
         "rows": left.shape[0], "candidate_width": left.shape[-1],
         "candidate_logprobs": {"pass": logprob_ok, "atol": atol, "rtol": rtol,
                                "failed_values": int((~close).sum()),
                                "nonfinite_values": int((~finite).sum()),
                                "max_abs": float(delta[finite].max()) if bool(finite.any()) else None,
                                "exact_values": int((left == right).sum()), "total_values": left.numel()},
-        "teacher_topk": {"exact_set_equal": topk_ok, "equal_rows": int(equal_rows.sum()),
+        "teacher_topk": {"exact_set_equal": topk_set_ok, "equal_rows": int(equal_rows.sum()),
                          "different_rows": int((~equal_rows).sum()), "total_rows": equal_rows.numel(),
+                         "ordered_exact_equal": bool(ordered_equal_rows.all()),
+                         "ordered_equal_rows": int(ordered_equal_rows.sum()),
                          "first_different_rows": (~equal_rows).nonzero().flatten()[:64].tolist(),
                          "tie_status_if_different": "UNKNOWN_without_full_reference_logits"},
     }

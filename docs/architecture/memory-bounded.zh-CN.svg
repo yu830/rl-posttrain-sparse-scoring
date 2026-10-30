@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 1500" width="1800" height="1500" role="img" aria-labelledby="title desc">
+<title id="title">显存受控的 Teacher Scoring</title>
+<desc id="desc">已观察的单 GPU FSDP2 路径及验证边界</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#3d5263"/></marker></defs>
+<rect width="1800" height="1500" fill="#ffffff"/>
+<text x="70" y="68" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="46" font-weight="bold" fill="#172d40">显存受控的 Teacher Scoring</text>
+<text x="70" y="117" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#576a79">已观察的单 GPU FSDP2 路径及验证边界</text>
+<polyline points="550,252 660,252" fill="none" stroke="#3d5263" stroke-width="4" marker-end="url(#arrow)"/>
+<polyline points="900,325 900,410" fill="none" stroke="#3d5263" stroke-width="4" marker-end="url(#arrow)"/>
+<polyline points="780,560 780,610 310,610 310,660" fill="none" stroke="#3d5263" stroke-width="4" marker-end="url(#arrow)"/>
+<polyline points="1020,560 1020,610 1490,610 1490,660" fill="none" stroke="#3d5263" stroke-width="4" marker-end="url(#arrow)"/>
+<polyline points="310,810 310,870 780,870 780,930" fill="none" stroke="#3d5263" stroke-width="4" marker-end="url(#arrow)"/>
+<polyline points="1490,810 1490,870 1020,870 1020,930" fill="none" stroke="#3d5263" stroke-width="4" marker-end="url(#arrow)"/>
+<polyline points="900,1080 900,1220" fill="none" stroke="#3d5263" stroke-width="4" marker-end="url(#arrow)"/>
+<polyline points="1140,1298 1250,1298" fill="none" stroke="#3d5263" stroke-width="4" marker-end="url(#arrow)"/>
+<rect x="70" y="180" width="480" height="145" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="90" y="225" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">学生候选</text>
+<text x="90" y="263" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">有效行上的有序候选 ID</text>
+<text x="90" y="301" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Padded 输入与注意力掩码</text>
+<rect x="660" y="180" width="480" height="145" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="680" y="225" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">TeacherFSDPWorker</text>
+<text x="680" y="263" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">外层 FSDP2 前向 hooks</text>
+<text x="680" y="301" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">单卡；CPU offload 可选</text>
+<rect x="1250" y="180" width="480" height="145" rx="14" fill="#f2eff7" stroke="#685780" stroke-width="3"/>
+<text x="1270" y="225" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#685780">当前支持边界</text>
+<text x="1270" y="263" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">共享权重 Qwen2、padding、BF16</text>
+<text x="1270" y="301" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">不声明多卡 / Ray 成果</text>
+<rect x="660" y="410" width="480" height="150" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="680" y="455" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">Transformer 与最终归一化</text>
+<text x="680" y="493" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">真实模型前向，不使用 KV cache</text>
+<text x="680" y="531" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">保留 FSDP 参数生命周期</text>
+<rect x="70" y="660" width="480" height="150" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="90" y="705" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">A0：原生稠密输出头</text>
+<text x="90" y="743" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">物化完整 logits</text>
+<text x="90" y="781" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">参考实现或明确回退</text>
+<rect x="1250" y="660" width="480" height="150" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="1270" y="705" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">A1：输出头前按行分块</text>
+<text x="1270" y="743" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">LM Head 按有限行块执行</text>
+<text x="1270" y="781" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">不拼接完整 logits</text>
+<rect x="660" y="930" width="480" height="150" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="680" y="975" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">全词表归一化与筛选</text>
+<text x="680" y="1013" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">FP32 LSE 与候选 gather</text>
+<text x="680" y="1051" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">Teacher 自身 Top-K ID</text>
+<rect x="70" y="930" width="480" height="150" rx="14" fill="#f2eff7" stroke="#685780" stroke-width="3"/>
+<text x="90" y="975" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#685780">预算为估算</text>
+<text x="90" y="1013" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">前向前选择输出头分块行数</text>
+<text x="90" y="1051" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">不是整卡显存硬上限</text>
+<rect x="1250" y="930" width="480" height="150" rx="14" fill="#fff9ee" stroke="#94611e" stroke-width="3" stroke-dasharray="12 8"/>
+<text x="1270" y="975" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#94611e">尚未验证</text>
+<text x="1270" y="1013" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">多卡 / packed varlen / Ray</text>
+<text x="1270" y="1051" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">完整 RL 训练及加速</text>
+<rect x="660" y="1220" width="480" height="155" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="680" y="1265" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">Worker 紧凑输出</text>
+<text x="680" y="1303" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">CPU nested tensor 与 offsets</text>
+<text x="680" y="1341" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">候选 logp 与 Teacher Top-K</text>
+<rect x="1250" y="1220" width="480" height="155" rx="14" fill="#eaf0f6" stroke="#34516a" stroke-width="3"/>
+<text x="1270" y="1265" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="30" font-weight="bold" fill="#34516a">Loss 与 Student 验证</text>
+<text x="1270" y="1303" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">统计前应用 response mask</text>
+<text x="1270" y="1341" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="25" font-weight="normal" fill="#233847">仅最终 RMSNorm 更新</text>
+<rect x="70" y="1431" width="35" height="25" fill="#eaf0f6" stroke="#34516a" stroke-width="2"/>
+<text x="118" y="1455" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="23" font-weight="normal" fill="#233847">限定范围内已实现</text>
+<rect x="590" y="1431" width="35" height="25" fill="#fff9ee" stroke="#94611e" stroke-width="2"/>
+<text x="638" y="1455" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="23" font-weight="normal" fill="#233847">尚未验证</text>
+<rect x="1110" y="1431" width="35" height="25" fill="#f2eff7" stroke="#685780" stroke-width="2"/>
+<text x="1158" y="1455" font-family="Noto Serif SC, Noto Serif CJK SC, serif" font-size="23" font-weight="normal" fill="#233847">边界 / 估算</text>
+</svg>
