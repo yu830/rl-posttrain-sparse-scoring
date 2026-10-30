@@ -2,3 +2,6 @@
 # A unified patch uses a single space as an empty context line; validate the
 # patch against upstream separately instead of treating those lines as code.
 integrations/verl_6920/memory-bounded-teacher.patch -text whitespace=-blank-at-eol
+
+# PDF bytes must not undergo line-ending conversion or text diff checks.
+*.pdf binary

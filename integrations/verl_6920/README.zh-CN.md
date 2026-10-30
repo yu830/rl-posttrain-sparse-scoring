@@ -58,3 +58,4 @@ python scripts/verl_teacher_worker_smoke.py --verl-dir "$VERL_DIR" --model-dir "
 python scripts/verify_verl_consumer.py --verl-dir "$VERL_DIR" --input "$OUT_DIR/consumer.json" \
   --device cuda --out "$OUT_DIR/verl-consumer.json"
 ```
+重复 Worker 检查时，先在新进程运行 dense-fallback，再将其 JSON 作为 --expected 传给新的 chunked 进程。脚本逐次核对已完成调用的紧凑输出哈希、dtype、形状和 offsets；不一致保留为失败。

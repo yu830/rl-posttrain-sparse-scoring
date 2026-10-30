@@ -280,6 +280,8 @@ def get_args():
     parser.add_argument("--row-chunks", nargs="+", type=int, default=[64, 128, 256, 512])
     parser.add_argument("--lse-chunk", type=int, default=1024)
     parser.add_argument("--attention", choices=("sdpa", "eager"), default="sdpa")
+    parser.add_argument("--worker-buffer-cast", action="store_true",
+                        help="match pinned verl engine model.to(dtype) before CUDA")
     parser.add_argument("--warmup", type=int, default=3)
     parser.add_argument("--aa-blocks", type=int, default=6, help="one sample per A0 label per block")
     parser.add_argument("--ab-blocks", type=int, default=10, help="ABBA/BAAB blocks; two samples per label per block")
@@ -358,7 +360,15 @@ def main():
         tokenizer = AutoTokenizer.from_pretrained(model_dir, local_files_only=True)
         model = AutoModelForCausalLM.from_pretrained(
             model_dir, dtype=dtype, attn_implementation=args.attention, local_files_only=True,
-        ).to("cuda").eval()
+        ).eval()
+        if args.worker_buffer_cast:
+            # Match the pinned verl engine's model.to(torch_dtype), including RoPE buffers.
+            model.to(dtype)
+        result["floating_buffer_identity"] = {
+            name: {"dtype": str(value.dtype), "sha256": tensor_sha256(value)}
+            for name, value in model.named_buffers() if value.is_floating_point()
+        }
+        model = model.to("cuda")
         install_memory_bounded_teacher(model)
         head = model.lm_head
         if args.fsdp2:

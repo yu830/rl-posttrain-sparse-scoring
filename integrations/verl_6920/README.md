@@ -121,3 +121,4 @@ python scripts/verl_teacher_worker_smoke.py --verl-dir "$VERL_DIR" --model-dir "
 python scripts/verify_verl_consumer.py --verl-dir "$VERL_DIR" --input "$OUT_DIR/consumer.json" \
   --device cuda --out "$OUT_DIR/verl-consumer.json"
 ```
+For repeated Worker checks, run a fresh dense-fallback process first, then pass its JSON as --expected to a fresh chunked process. The script checks every completed call's compact output hash, dtype, shape and offsets; unmatched output is retained as a failure.

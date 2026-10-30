@@ -92,6 +92,23 @@ def snapshot_output(output):
     return snapshot
 
 
+def compact_output_signature(snapshot):
+    """Keep the exact CPU output contract without duplicating tensor values."""
+    if snapshot is None:
+        return None
+    required = {"teacher_on_student_logp", "teacher_topk_ids"}
+    if set(snapshot) != required:
+        raise ValueError("unexpected Worker output signature fields")
+    result = {}
+    for name, value in snapshot.items():
+        shape = value.get("shape", value.get("values_shape"))
+        if shape is None:
+            raise ValueError("Worker output signature is missing the shape")
+        result[name] = {key: value[key] for key in ("dtype", "device", "offsets", "values_sha256")}
+        result[name]["shape"] = shape
+    return result
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--verl-dir", type=Path, required=True, help="patched checkout at the fixed verl commit")
@@ -109,6 +126,7 @@ def parse_args():
     parser.add_argument("--repeats", type=int, default=1)
     parser.add_argument("--master-port", type=int, default=0, help="0 chooses a free localhost port")
     parser.add_argument("--no-hooks", action="store_true", help="omit optional call-shape instrumentation")
+    parser.add_argument("--expected", type=Path, help="successful Worker JSON with identical fixture")
     return parser.parse_args()
 
 
@@ -219,6 +237,18 @@ def run(args, result):
     fixture_bytes = json.dumps(fixture, sort_keys=True, separators=(",", ":")).encode()
     result["fixture"] = fixture
     result["fixture_sha256"] = hashlib.sha256(fixture_bytes).hexdigest()
+    expected_signature = None
+    if args.expected is not None:
+        reference_path = args.expected.resolve()
+        reference = json.loads(reference_path.read_text(encoding="utf-8"))
+        if reference.get("status") != "PASS_SMOKE" or reference.get("fixture_sha256") != result["fixture_sha256"]:
+            raise ValueError("expected Worker result is not a successful identical fixture")
+        expected_signature = compact_output_signature(reference["outputs"])
+        result["expected_evidence"] = {"path": str(reference_path), "sha256": sha256(reference_path),
+                                       "mode": reference.get("mode")}
+    result["correctness_scope"] = ("STRICT_EXTERNAL_WORKER_HASH" if expected_signature is not None else
+                                   "REPEAT_CONSISTENCY_ONLY_NO_EXTERNAL_REFERENCE")
+    result["per_call_signatures"] = []
     result["input_offsets"] = [0, args.lengths[0], sum(args.lengths)]
     model_rows = len(args.lengths) * max(args.lengths)
     requested_rows = model_rows if args.mode == "dense-fallback" else args.chunk_rows
@@ -339,7 +369,15 @@ def run(args, result):
             elapsed = (time.perf_counter() - started) * 1000
             result["execution"]["compute_calls_completed"] += 1
             result["last_completed_output"] = snapshot_output(output)
+            signature = compact_output_signature(result["last_completed_output"])
+            if expected_signature is None:
+                expected_signature = signature
+            match = signature == expected_signature
+            result["per_call_signatures"].append({"index": index, "phase": "warmup" if index < args.warmup else "measured",
+                                                  "signature": signature, "matches_reference": match})
             checkpoint(result, args.out)
+            if not match:
+                raise RuntimeError("Worker output hash, dtype, shape or offsets differ from the reference")
             if index >= args.warmup:
                 samples.append({"host_wall_ms": elapsed, "before": before,
                                 "peak_allocated_bytes": torch.cuda.max_memory_allocated(),
