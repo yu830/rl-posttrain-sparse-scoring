@@ -1,12 +1,30 @@
 [English](./README.md) | [简体中文](./README.zh-CN.md)
 
-# Candidate-Conditioned Teacher Scoring
+# Memory-Bounded Teacher Scoring
 
-A systems research project on teacher scoring for language-model post-training. The active direction is **Memory-Bounded Teacher Scoring**: an opt-in, single-GPU Qwen2/FSDP path that chunks before the LM head while preserving full-vocabulary candidate logprobs and teacher Top-K. It remains experimental; multi-GPU behavior, production stability and full RL training have not been established.
+Teacher scoring for language-model post-training can return only a small set of token scores while still materializing a much larger token-by-vocabulary logits tensor. This experimental, opt-in integration chunks hidden-state rows **before the LM head** in a real, pinned verl Teacher Worker. It preserves full-vocabulary-normalized log probabilities at the Student candidate IDs and the Teacher's own ordered Top-K, rather than substituting candidate-only normalization.
 
-## Current implementation and measurement
+The implementation enters the normal outer FSDP2 forward, preserves tied weights and module hooks, and falls back to the native dense path when an unbudgeted chunk covers all rows. It targets single-GPU Qwen2 with CPU offload; the head budget is an estimate, not a device-wide hard limit. The earlier selected-logit fusion proposal remains **NO-GO** for the complete Teacher contract.
 
-The [memory-bounded integration and complete-forward results](./docs/memory-bounded-teacher.en.md) describe the pinned verl patch, the tested FSDP2/CPU-offload boundary, budget limitations, negative cases, and reproducible commands. The earlier selected-logit fusion proposal did not meet the complete teacher contract; the new path does not change that result.
+## Measured results
+
+Real `TeacherFSDPWorker`, Qwen2.5-0.5B-Instruct, BF16, K=32, SDPA, 256-row chunks and the same PyTorch allocator fraction 0.50; inputs are synthetic. Each mode and length has two fresh processes in ABBA order, each with one first-call warmup and five measured calls. Values below are per-call PyTorch peaks and synchronized Worker `perf_counter` spans, including diagnostic hooks and journal activity.
+
+| N | Peak allocated MiB, Dense / Chunked | Peak reserved MiB, Dense / Chunked | Warm p50 / p95 ms, Dense | Warm p50 / p95 ms, Chunked |
+| ---: | ---: | ---: | ---: | ---: |
+| 1,024 | 1,517.1 / 665.3 | 2,644 / 1,124 | 210.4 / 288.0 | 159.4 / 187.0 |
+| 4,096 | 2,409.4 / 672.3 | 2,944 / 1,130 | 322.3 / 414.4 | 318.8 / 327.5 |
+| 8,192 | 3,596.6 / 681.6 | 3,846 / 1,126 | 570.8 / 599.6 | 626.3 / 944.6 |
+
+At N=8192, peak allocated decreases **81.05%** in this complete Worker-call scope; all 262,144 candidate logprobs and 8,192 ordered Teacher Top-K rows match the Dense reference exactly. All 96 saved first-call and measured outputs across the new matrix were reopened and compared. At fraction 0.50, Dense ran at N=8704 and OOMed at 9216; Chunked ran at 32768, the largest tested point. There is no same-length Dense numerical reference at 32768. These are PyTorch allocator results, not whole-card VRAM savings or a hard device partition.
+
+Timing is descriptive: the 1024 Dense A/A process medians were 229.2 and 158.0 ms, and host clocks differed by up to 8.33% in the chunk-size sweep. In an earlier single cold N=8192 pair, Dense took 3,382 ms and Chunked 8,756 ms; the synchronized span extended through nested CPU return and included hooks and sampler activity. The earlier CUDA `unknown error` and clock discrepancies remain unexplained; no general acceleration or RL training benefit is claimed. A separate bounded Worker-to-loss-to-Student test matched the pinned loss and a restricted RMSNorm update; full Ray dispatch and RL training remain unverified.
+
+![Measured Worker memory and timing](./docs/figures/worker-memory-timing.png)
+
+[Results and scope](./docs/memory-bounded-teacher.en.md) · [Evidence manifest](./results/worker-evidence-manifest.json) · [Reproduce](./docs/experimental-reproduction.md) · [Experimental report](./docs/reports/memory-bounded-experimental.en.pdf) · [Historical G2 results](./docs/g2-results.en.md)
+
+New experimental results and report text are AI-assisted and **pending Human review**.
 
 ## Industrial problem
 

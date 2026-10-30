@@ -68,7 +68,7 @@ Teacher 即使只返回紧凑分数，也可能先分配完整 token×vocabulary
 
 逐行评分接口与索引 selected-logit 原语已经处理其中部分问题。此前源码调查记录了相关 SGLang、vLLM 接口及 IndexedLogits，这些观察仍限定在当时的固定版本。\cite{sglang38119,vllm56984,indexedlogits,omnilens2026} 本报告的工程对象更具体：在固定 verl 的 Qwen2/FSDP 执行中，限制 logits tile 的分配，同时保留完整 Teacher 契约。行分块是已有方法；此前仅计算 Student 候选 logits 的融合方案，对完整契约仍为 \textbf{NO-GO}。
 
-目标为 \href{https://github.com/verl-project/verl/tree/87cd055e872f9fdd7b976fcd797a0934b6dba265}{verl PR \#6920 的固定版本} \code{87cd055e872f9fdd7b976fcd797a0934b6dba265}。补丁显式启用，关闭时保留上游分支。源码观察及本地运行不代表上游已接受或合并。
+目标为 \href{https://github.com/verl-project/verl/tree/87cd055e872f9fdd7b976fcd797a0934b6dba265}{verl PR \#6920 的固定版本}\cite{verl6920pinned} \code{87cd055e872f9fdd7b976fcd797a0934b6dba265}。补丁显式启用，关闭时保留上游分支。源码观察及本地运行不代表上游已接受或合并。
 
 \section{完整评分与消费契约}
 对第 $t$ 行，隐状态为 $h_t$，输出头权重为 $W$、bias 为 $b$，候选支持集为 $C_t$：
@@ -235,13 +235,50 @@ $N=8192$ 时，262,144 个候选 logprob 与全部 8192 行有序 Teacher Top-$K
 
 开始时两次尝试因预登记的空闲显存门槛未满足而为 \code{NOT_RUN}；一次 CPU 依赖导入失败后，在 GPU 执行前修正了 runner。十个完成的 Worker 进程均记录设备采样无失败。后续 probe 修订在设备观测缺失时将实验标为失败，同时保留已完成的 Worker 输出；实际运行源码及 SHA-256 与原始测量一起保留。该错误处理修正只做 CPU 回归，不改写已记录运行。
 
+\section{最终有界 Worker 对照}
+最终矩阵使用固定 Worker 和 Qwen2.5 BF16 fixture，$K=32$、SDPA、FSDP2 CPU offload、allocator fraction 0.50。$N=1024,4096,8192$ 各按 Dense--Chunked--Chunked--Dense 顺序运行四个独立进程；每进程一次首次调用预热及五次计数。包含预热与分块大小实验在内的 96 份紧凑输出均重新读取，并与同长度 Dense 参考比较；本矩阵的候选 logprob 和有序 Teacher Top-$K$ 全部逐值一致。
+
+\begin{table}[htbp]\centering\small
+\begin{tabularx}{\linewidth}{@{}rYrrrr@{}}\toprule
+$N$ & 路径 & Alloc. MiB & Reserv. MiB & p50 ms & p95 ms\\\midrule
+1024 & Dense & 1517.1 & 2644 & 210.4 & 288.0\\
+1024 & Chunked & 665.3 & 1124 & 159.4 & 187.0\\
+4096 & Dense & 2409.4 & 2944 & 322.3 & 414.4\\
+4096 & Chunked & 672.3 & 1130 & 318.8 & 327.5\\
+8192 & Dense & 3596.6 & 3846 & 570.8 & 599.6\\
+8192 & Chunked & 681.6 & 1126 & 626.3 & 944.6\\\bottomrule
+\end{tabularx}\caption{逐次 PyTorch allocator 峰值及预热后的同步 Worker 耗时；$B=256$。每种路径及长度有两个进程、10 个计数样本；分位数使用线性插值。}\label{tab:final-matrix}
+\end{table}
+
+\begin{figure}[htbp]\centering
+\includegraphics[width=\linewidth]{docs/figures/worker-memory-timing.pdf}
+\caption{实测 allocator 峰值和描述性 Worker 耗时。黑色标记为 PyTorch reserved 峰值，不是整卡显存。}\label{fig:final-memory}
+\end{figure}
+
+$N=8192$ 时，该 Worker 调用范围的 allocated 峰值下降 81.05\%。同一 allocator fraction 下，Dense 在 8704 成功、9216 OOM，Chunked 在 16384 与 32768 成功。这些是已测点，不证明精确最大长度或整卡耗尽；32768 尚无同长度 Dense 真值。进程开始与结束的设备快照不构成完整设备峰值测量。
+
+\begin{figure}[htbp]\centering
+\includegraphics[width=\linewidth]{docs/figures/worker-chunk-tradeoff.pdf}
+\caption{分块大小对照。256 行使用两个进程、10 个样本；128 和 512 行各使用一个进程、五个样本。}\label{fig:chunk-tradeoff}
+\end{figure}
+
+\begin{samepage}
+时延只作描述：$N=1024$ Dense 两个进程的中位数为 229.2 和 158.0 ms，分块实验中有样本的两种主机时钟相差 8.33\%。此前 $N=8192$ 的一组冷调用为 Dense 3382.176 ms、Chunked 8756.047 ms；同步计时覆盖至 nested CPU 返回，并包含诊断 hooks 与采样；单次观察不能证明稳定变慢。首次 CUDA 错误与时钟分歧仍未归因，不声明通用加速。另外的 $N=4096$ 单调用 profiler 中，Dense / Chunked 分别记录 97 / 112 次 \code{aten::mm}（self CUDA 88.8 / 103.6 ms）、1 / 16 次 \code{aten::topk}（18.0 / 19.7 ms）以及各 290 次锁页内存到设备拷贝（设备事件合计 74.9 / 73.3 ms）。矩阵乘法、传输与归约均构成观察到的工作；这些类别可能重叠或嵌套，且 profiler 引入开销，不能将时长相加当作关键路径或无插桩延迟。\par
+\end{samepage}
+
+既有真实 Worker-to-Student 实验比较了固定反向 KL loss、梯度及受限 RMSNorm 更新；新增 CPU 重放在每个长度抽取 16 行，比较固定上游 loss 和 Student logits 梯度，候选为合成 ID。这不是实际 Student 轨迹或完整 RL 训练。
+
 \section{复现入口与技术判断}
+独立干净 scoring 检出以 \code{0273017} 为基准并加入包导入修复；新建 Python 3.12 环境从 105 项哈希锁安装依赖。固定模型单独下载并核对哈希后，真实 Dense 与 Chunked N=1024 Worker 的 32,768 个候选值和 1024 行有序 Top-K 完全一致。该干净检出在 CUDA 可用时通过 195 项测试；包含采样器回归的最终工作树通过 199 项。此前依赖和导入失败保留在私有实验证据中。公开的 \code{results/worker-evidence-manifest.json} 用 SHA-256 绑定原始工件；原始证据包保存在私有项目工作区。\par
+
+
 源码基线为 \code{0fd56a618800b5298d8c45529dda675f910c6e47}；后续 Worker probe 与 mask 回归位于包含本报告的版本。原始记录绑定实际测量时所用 probe 的源码字节。固定 loss 为 \href{https://github.com/verl-project/verl/blob/87cd055e872f9fdd7b976fcd797a0934b6dba265/verl/trainer/distillation/fsdp/losses.py}{真实 verl FSDP distillation loss}，Git blob 为 \code{97d3ebf485a5ce9e1b1a435cce427d6d89284dc6}。原始测量附模型与 tokenizer 哈希、命令参数和源码身份。
 
 主要入口包括 \code{scripts/long_worker_probe.py}、\code{scripts/factorial_teacher_probe.py}、\code{scripts/compare_capacity_outputs.py}、\code{scripts/full_teacher_benchmark.py} 和 \code{scripts/worker_to_student_step.py}。证据标识包括 \code{S1_SUMMARY.json}、\code{capacity_runner.jsonl}、\code{compare_validated_summary.json}、\code{compare_on_n9216.json}、\code{T1_worker_aligned_on/off.json} 与 \code{worker_to_student_01.json}。前述表格据双语 Markdown 阶段增补转录；上节的新结果来自记录的 Worker 调用与 CPU mask 回归。
 
 可支持的判断是：在所述单 GPU 环境中，保留完整评分契约的受限读出具有实测 allocator 容量收益，并完成了真实受限消费者更新。FP32 GPU、FSDP1、TP/多 GPU、packed varlen、LoRA/量化/QAT、Ray 传输、代表性 RL 轨迹、全模型训练和生产稳定性仍未验证；普遍时延收益、精确整设备 VRAM 节省及训练质量提升未获证实。全部新增正文继续保持 AI 辅助、等待 Human 审核。
 
+\clearpage
 \bibliographystyle{plainnat}
 \bibliography{docs/reports/references}
 \end{document}

@@ -1,12 +1,30 @@
 [English](./README.md) | [简体中文](./README.zh-CN.md)
 
-# 候选集条件教师评分
+# 显存预算约束的教师评分
 
-本项目研究语言模型后训练中的教师评分系统。当前方向是**显存预算约束的 Teacher Scoring**：在单 GPU Qwen2/FSDP 路径中将行分块前移到 LM Head 之前，同时保留全词表归一化候选 logprob 和教师 Top-K。该路径仍处于实验阶段；多卡行为、生产稳定性和完整 RL 训练尚未确立。
+语言模型后训练中的教师评分即使只返回少量 token 分数，也可能先生成庞大的“token × 词表”logits 张量。本项目在固定版本的真实 verl Teacher Worker 中，将隐藏状态按行分块前移到 **LM Head 之前**。该实验性、可选启用的集成保留学生候选 ID 上的全词表归一化 logprob 和教师自身的有序 Top-K，而非将其替换为仅在候选集内归一化的分数。
 
-## 当前实现与测量
+实现通过正常的外层 FSDP2 forward 执行，保留共享权重和模块 hooks；无预算且单块覆盖全部行时回退到原生 Dense 路径。当前目标为单 GPU Qwen2 与 CPU offload；输出头预算是估算值，并非整卡显存硬上限。早期 selected-logit 融合方案对完整 Teacher 契约仍为 **NO-GO**。
 
-[显存预算约束集成及完整前向结果](./docs/memory-bounded-teacher.zh-CN.md)说明固定 verl 补丁、已测 FSDP2/CPU offload 边界、预算局限、负结果与复现命令。此前仅用融合候选 logits 替换完整教师契约的方案未通过，新路径不改变这一结论。
+## 实测结果
+
+真实 `TeacherFSDPWorker`、Qwen2.5-0.5B-Instruct、BF16、K=32、SDPA、256 行分块，双方均使用 PyTorch allocator fraction 0.50；输入为合成数据。每个长度和路径采用 ABBA 顺序的两个独立进程，每进程一次首次调用预热、五次计数。下表是逐次 Worker 调用的 PyTorch 峰值与同步 `perf_counter` 耗时，包含诊断 hooks 和日志开销。
+
+| N | Peak allocated MiB，Dense / Chunked | Peak reserved MiB，Dense / Chunked | 预热后 p50 / p95 ms，Dense | 预热后 p50 / p95 ms，Chunked |
+| ---: | ---: | ---: | ---: | ---: |
+| 1,024 | 1,517.1 / 665.3 | 2,644 / 1,124 | 210.4 / 288.0 | 159.4 / 187.0 |
+| 4,096 | 2,409.4 / 672.3 | 2,944 / 1,130 | 322.3 / 414.4 | 318.8 / 327.5 |
+| 8,192 | 3,596.6 / 681.6 | 3,846 / 1,126 | 570.8 / 599.6 | 626.3 / 944.6 |
+
+N=8192 时，完整 Worker 调用的 peak allocated 在该分配器口径下降低 **81.05%**；262,144 个候选 logprob 与 8,192 行有序 Teacher Top-K 均与 Dense 逐值一致。新矩阵保存的 96 份首次调用和计数输出均已重新读取并比较。fraction 0.50 下，Dense 在 N=8704 成功、9216 OOM；Chunked 在已测最大点 32768 成功。32768 尚无同长度 Dense 数值参考。这些结果属于 PyTorch allocator，而非整卡 VRAM 降幅或设备硬分区。
+
+时延仅作描述：1024 Dense 的两进程 A/A 中位数为 229.2 和 158.0 ms，分块大小实验的主机时钟差异最高达 8.33%。此前单次 N=8192 冷调用中 Dense 为 3,382 ms、Chunked 为 8,756 ms；同步计时覆盖至 nested CPU 返回，并包含 hooks 与采样活动。早先 CUDA `unknown error` 与时钟差异仍未归因；这里不声明通用加速或 RL 训练收益。另一个有界 Worker-to-loss-to-Student 实验验证了固定 Loss 与受限 RMSNorm 更新一致；完整 Ray 调度和 RL 训练尚未验证。
+
+![真实 Worker 显存与时延测量](./docs/figures/worker-memory-timing.png)
+
+[结果与适用范围](./docs/memory-bounded-teacher.zh-CN.md) · [证据清单](./results/worker-evidence-manifest.json) · [复现说明](./docs/experimental-reproduction.md) · [实验报告](./docs/reports/memory-bounded-experimental.zh-CN.pdf) · [历史 G2 结果](./docs/g2-results.zh-CN.md)
+
+新增实验结果和报告文字由 AI 辅助整理，**等待 Human 审核**。
 
 ## 行业问题
 

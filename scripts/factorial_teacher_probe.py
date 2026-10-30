@@ -593,6 +593,10 @@ def main(argv=None):
                        completed_calls=result.get("completed_calls", 0), memory=result["memory_at_failure"])
     finally:
         result["all_device_sampler"] = sampler.stop()
+        if result["all_device_sampler"]["failure"] is not None or result["all_device_sampler"]["sample_count"] == 0:
+            result["probe_status_before_sampler_check"] = result["status"]
+            if result["status"].startswith("PASS"):
+                result["status"] = "ERROR_DEVICE_SAMPLER"
         result["journal"] = {"path": str(args.events), "sha256_before_final_event": sha256(args.events)}
         with args.out.open("x", encoding="utf-8") as stream:
             json.dump(json_safe(result), stream, ensure_ascii=False, indent=2, allow_nan=False)

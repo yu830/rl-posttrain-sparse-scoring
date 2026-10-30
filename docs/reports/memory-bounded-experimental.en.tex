@@ -52,7 +52,7 @@ Distillation consumers require different information: selected logits, condition
 
 Existing per-row scoring interfaces and indexed selected-logit primitives already address parts of this problem. The earlier source survey found relevant SGLang and vLLM interfaces and IndexedLogits; those observations remain tied to their recorded revisions.\cite{sglang38119,vllm56984,indexedlogits,omnilens2026} The engineering subject of this report is narrower: preserving the complete pinned verl Teacher contract while bounding the logits tile in its Qwen2/FSDP execution. Row chunking is an established method, and the selected-logit-only fusion proposal remains \textbf{NO-GO} for this complete contract.
 
-The target is \href{https://github.com/verl-project/verl/tree/87cd055e872f9fdd7b976fcd797a0934b6dba265}{verl PR \#6920 at the fixed revision} \code{87cd055e872f9fdd7b976fcd797a0934b6dba265}. The patch is opt-in; its disabled branch retains the upstream behavior. Source observations and the present local runs do not establish upstream acceptance.
+The target is \href{https://github.com/verl-project/verl/tree/87cd055e872f9fdd7b976fcd797a0934b6dba265}{verl PR \#6920 at the fixed revision}\cite{verl6920pinned} \code{87cd055e872f9fdd7b976fcd797a0934b6dba265}. The patch is opt-in; its disabled branch retains the upstream behavior. Source observations and the present local runs do not establish upstream acceptance.
 
 \section{Complete scoring and consumer contract}
 For row $t$, let hidden state $h_t$, head weight $W$, bias $b$, and candidate support $C_t$ define:
@@ -219,13 +219,50 @@ The fixed trainer's metric wrapper masks to response rows before mass, loss rang
 
 Two initial starts were \code{NOT_RUN} because the predeclared free-memory gate was not met; an initial CPU dependency import also failed and the runner was corrected before GPU execution. All ten completed Worker processes report no device-sampler failure. The subsequent probe revision makes a missing device observation fail the experiment while retaining any successful Worker output; the executed probe source and its SHA-256 remain with the raw measurements. This later error-handling correction was CPU-regression-tested and does not retroactively change the recorded runs.
 
+\section{Final bounded Worker comparison}
+The final matrix used the same pinned Worker and Qwen2.5 BF16 fixture with $K=32$, SDPA, FSDP2 CPU offload and allocator fraction 0.50. For each of $N=1024,4096,8192$, four fresh processes ran Dense--Chunked--Chunked--Dense; each process had one first-call warmup and five measured calls. All 96 saved compact outputs, including warmups and the chunk-size sweep, were reloaded and compared against their same-length Dense references. Candidate logprobs and ordered Teacher Top-$K$ were exact in this matrix.
+
+\begin{table}[htbp]\centering\small
+\begin{tabularx}{\linewidth}{@{}rYrrrr@{}}\toprule
+$N$ & Mode & Alloc. MiB & Reserv. MiB & p50 ms & p95 ms\\\midrule
+1024 & Dense & 1517.1 & 2644 & 210.4 & 288.0\\
+1024 & Chunked & 665.3 & 1124 & 159.4 & 187.0\\
+4096 & Dense & 2409.4 & 2944 & 322.3 & 414.4\\
+4096 & Chunked & 672.3 & 1130 & 318.8 & 327.5\\
+8192 & Dense & 3596.6 & 3846 & 570.8 & 599.6\\
+8192 & Chunked & 681.6 & 1126 & 626.3 & 944.6\\\bottomrule
+\end{tabularx}\caption{Per-call PyTorch allocator peaks and warmed, synchronized Worker spans; $B=256$. Each mode/length has 10 measured samples across two processes. Percentiles use linear interpolation.}\label{tab:final-matrix}
+\end{table}
+
+\begin{figure}[htbp]\centering
+\includegraphics[width=\linewidth]{docs/figures/worker-memory-timing.pdf}
+\caption{Measured allocator peaks and descriptive Worker timing. Reserved markers are PyTorch reserved peaks; they are not total-device memory.}\label{fig:final-memory}
+\end{figure}
+
+The $N=8192$ allocated peak decreased by 81.05\% in this measured Worker-call scope. In the same allocator fraction, Dense succeeded at 8704 and OOMed at 9216, while Chunked succeeded at 16384 and 32768. These are tested points, not proof of the exact maximum or total-device exhaustion; no same-length Dense oracle exists at 32768. Start/end device snapshots were recorded, but an exact all-device peak was not measured.
+
+\begin{figure}[htbp]\centering
+\includegraphics[width=\linewidth]{docs/figures/worker-chunk-tradeoff.pdf}
+\caption{Chunk-size sensitivity. The 256-row point has two processes and 10 samples; 128 and 512 each have one process and five samples.}\label{fig:chunk-tradeoff}
+\end{figure}
+
+\begin{samepage}
+Latency is descriptive: the two $N=1024$ Dense process medians were 229.2 and 158.0 ms, and a chunk-sweep sample showed an 8.33\% host-clock difference. An earlier single cold $N=8192$ pair measured 3382.176 ms Dense and 8756.047 ms Chunked. The synchronized cold spans run through nested CPU return and include diagnostic hooks and sampling; they do not establish a stable slowdown. The initial CUDA error and the clock discrepancies remain unexplained; no general speedup is claimed. In separate one-call $N=4096$ profiler captures, Dense / Chunked recorded 97 / 112 \code{aten::mm} calls (88.8 / 103.6 ms self CUDA), one / 16 \code{aten::topk} calls (18.0 / 19.7 ms self CUDA) and 290 pinned host-to-device copies each (74.9 / 73.3 ms of recorded device intervals). Matrix multiplication, transfers and reduction all contribute to the observed work. These categories may overlap or be nested, and profiling adds overhead; their durations must not be summed as the critical path or treated as an unprofiled latency result.\par
+\end{samepage}
+
+The existing actual Worker-to-Student test compared the pinned reverse-KL loss, gradients and a restricted RMSNorm update. An additional CPU replay compared that actual upstream loss and Student-logits gradients for 16 sampled rows at each length using synthetic candidate IDs. It is not a real Student trajectory or complete RL training.
+
 \section{Reproduction and final technical judgment}
+A separate clean scoring checkout at \code{0273017} received the package-import fix, and a new Python 3.12 environment was installed from the 105-package hash lock. A separately downloaded pinned model was hash-checked, and real Dense and Chunked N=1024 Workers returned 32,768 exactly matching candidate values and 1024 ordered Top-K rows. The clean checkout ran 195 tests with CUDA enabled; the final working tree including the additional sampler regression ran 199. The earlier dependency and import failures remain in the private experiment evidence. The public \code{results/worker-evidence-manifest.json} binds archived raw artifacts by SHA-256; the archive itself remains in the private project workspace.\par
+
+
 The base source snapshot is \code{0fd56a618800b5298d8c45529dda675f910c6e47}; the later Worker probe and mask regression are in the revision containing this report. The raw records bind the probe bytes used for the measured runs. The pinned loss is \href{https://github.com/verl-project/verl/blob/87cd055e872f9fdd7b976fcd797a0934b6dba265/verl/trainer/distillation/fsdp/losses.py}{the actual verl FSDP distillation loss}, Git blob \code{97d3ebf485a5ce9e1b1a435cce427d6d89284dc6}. Model and tokenizer hashes, command arguments and source identities accompany the original measurements.
 
 The principal entries include \code{scripts/long_worker_probe.py}, \code{scripts/factorial_teacher_probe.py}, \code{scripts/compare_capacity_outputs.py}, \code{scripts/full_teacher_benchmark.py} and \code{scripts/worker_to_student_step.py}. Evidence identifiers include \code{S1_SUMMARY.json}, \code{capacity_runner.jsonl}, \code{compare_validated_summary.json}, \code{compare_on_n9216.json}, \code{T1_worker_aligned_on/off.json} and \code{worker_to_student_01.json}. The bilingual Markdown stage supplement supplies the preceding measured tables; the later section above uses the recorded Worker runs and CPU mask regression.
 
 The supported conclusion is contract-preserving bounded readout with measured allocator-capacity benefits and a real restricted consumer update in the stated single-GPU environment. FP32 GPU, FSDP1, TP/multi-GPU, packed varlen, LoRA/quantization/QAT, Ray transport, representative RL trajectories, full-model training and production stability remain unverified. General latency improvement, exact total-device VRAM savings and training-quality gains are not established. All new text remains AI-assisted and pending Human review.
 
+\clearpage
 \bibliographystyle{plainnat}
 \bibliography{docs/reports/references}
 \end{document}

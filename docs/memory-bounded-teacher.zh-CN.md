@@ -108,3 +108,11 @@ python scripts/full_teacher_benchmark.py --model-dir "$MODEL_DIR" --out "$OUT_DI
 [中文阶段增补](reports/memory-bounded-stage-20261030.zh-CN.pdf)与[可编辑 Markdown](reports/memory-bounded-stage-20261030.zh-CN.md)等待 Human 审核。运行 `python scripts/build_stage_report_20261030.py --output-dir "$OUT_DIR/reports"` 可重新生成 PDF；本次构建使用 ReportLab 4.4.9 和 Windows 宋体/黑体。可用 `--cjk-font` 指定其他完整中文字体，替换字体可能改变分页。
 
 [固定 verl 补丁与 Worker 设置](../integrations/verl_6920/README.zh-CN.md)记录源码版本、配置和离线校验。真实 Worker 运行是直接进程冒烟，不代表 Ray 远程调度或多卡运行。此前已审核的技术报告和架构图仍描述原快照，尚未修订以声明这些新测量。
+
+## 最终有界 Worker 对照
+
+最终 N=1024/4096/8192 的 ABBA 矩阵每路径使用两个独立进程，每进程一次预热和五次计数。包含 128/256/512 行分块对照在内的 96 份完整紧凑输出均与同长度 Dense 参考逐值一致。N=8192、fraction 0.50 时，Dense / Chunked 的 peak allocated 为 3596.638 / 681.630 MiB，reserved 为 3846 / 1126 MiB；该 Worker 调用的 allocated 降幅为 81.05%。Dense 在 8704 成功、9216 OOM；Chunked 在已测最大点 32768 成功，该长度没有同 N Dense 真值。这些是 allocator 预算结果，不是整卡显存。
+
+预热后 8192 的 perf-counter p50/p95 为 Dense 570.8/599.6 ms、Chunked 626.3/944.6 ms。A/A 波动及主机时钟差异限制了时延解释；此前一组 8192 冷调用为 3382.176/8756.047 ms。不声明加速。[汇总数据](../results/worker-benchmark-summary.json)、[图表](figures/worker-memory-timing.png)、[分块对照](figures/worker-chunk-tradeoff.png)与[复现说明](experimental-reproduction.md)记录具体范围。新增内容等待 Human 审核。
+
+独立 N=4096 profiler 重放中，Dense / Chunked 分别有 97 / 112 次 `aten::mm`（self CUDA 88.8 / 103.6 ms）、1 / 16 次 `aten::topk`（18.0 / 19.7 ms），两者各有 290 次锁页 HtoD 拷贝（74.9 / 73.3 ms）。这些活动可能重叠或嵌套，且包含 profiler 开销；它们说明观察到的工作，不能相加为关键路径。

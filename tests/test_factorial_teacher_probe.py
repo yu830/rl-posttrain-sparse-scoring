@@ -166,3 +166,36 @@ def test_recorded_worker_fixture_preserves_duplicate_candidates_and_offsets():
     recorded["fixture"]["topk_ids"][0][0][0] = -1
     with pytest.raises(ValueError, match="outside the vocabulary"):
         probe.build_fixture(tokenizer, [3, 1], 2, 17, "cpu", recorded)
+
+@pytest.mark.parametrize(
+    "probe_status,sampler,expected,exit_code",
+    [
+        ("PASS_REFERENCE_EQUIVALENT", {"failure": {"status": "UNAVAILABLE"}, "sample_count": 1}, "ERROR_DEVICE_SAMPLER", 1),
+        ("PASS_REPEAT_ONLY", {"failure": None, "sample_count": 0}, "ERROR_DEVICE_SAMPLER", 1),
+        ("MISMATCH", {"failure": {"status": "UNAVAILABLE"}, "sample_count": 0}, "MISMATCH", 1),
+        ("PASS_REPEAT_ONLY", {"failure": None, "sample_count": 1}, "PASS_REPEAT_ONLY", 0),
+    ],
+)
+def test_sampler_outcome_controls_experiment_status(tmp_path, monkeypatch, probe_status, sampler, expected, exit_code):
+    class Sampler:
+        def __init__(self, *args):
+            pass
+
+        def start(self):
+            pass
+
+        def stop(self):
+            return sampler
+
+    def completed_probe(args, result, journal):
+        result.update(status=probe_status, completed_calls=2, output={"preserved": True})
+
+    monkeypatch.setattr(probe, "DeviceSampler", Sampler)
+    monkeypatch.setattr(probe, "run", completed_probe)
+    assert probe.main(args_for(tmp_path)) == exit_code
+    result = json.loads((tmp_path / "result.json").read_text())
+    assert result["status"] == expected
+    assert result["all_device_sampler"] == sampler
+    assert result["completed_calls"] == 2 and result["output"] == {"preserved": True}
+    if sampler["failure"] is not None or sampler["sample_count"] == 0:
+        assert result["probe_status_before_sampler_check"] == probe_status
