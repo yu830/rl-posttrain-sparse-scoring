@@ -57,6 +57,12 @@ N=8192 时，完整 Worker 调用的 peak allocated 在该分配器口径下降�
 
 ## 复现
 
+### CPU 回归 CI
+
+[CPU 工作流](./.github/workflows/cpu-tests.yml)使用独立的 Python 3.12 / CPU 版 PyTorch 哈希锁环境，并获取固定 verl 源码执行补丁检查。它不下载模型权重，运行确定性的 CPU 回归；两项依赖完整上游 Trainer runtime 的测试明确取消选择，意外跳过会使任务失败。CUDA 测试、真实 GPU Teacher Worker、性能实验和 RL 训练不属于这条 CI。实际运行结果见 [GitHub Actions](https://github.com/yu830/rl-posttrain-sparse-scoring/actions)。
+
+### 真实 Worker 与文档
+
 [实验版 Worker 复现说明](./docs/experimental-reproduction.md)列出固定环境、长序列 Dense/Chunked 对照、无人工 fraction 的 ABBA 对照和 response mask 测试。
 
 以下命令重建文档，不会运行评分服务或基准测试。依赖：XeLaTeX、BibTeX、Poppler（`pdftoppm`、`pdfinfo`、`pdftotext`）、带 Pillow 的 Python 3，以及随仓库提供的有限字符集字体。例如：

@@ -57,6 +57,12 @@ This historical diagram distinguishes **existing upstream**, **proposed and unim
 
 ## Reproduction
 
+### CPU regression CI
+
+The [CPU workflow](./.github/workflows/cpu-tests.yml) uses a separate, hash-locked Python 3.12 / CPU-only PyTorch environment and the pinned verl source for patch checks. It runs deterministic CPU regressions without downloading model weights. Two cases that require the full upstream Trainer runtime are explicitly deselected; unexpected skips fail the job. CUDA tests, real GPU Teacher Worker execution, benchmarks and RL training are outside this CI. See [GitHub Actions](https://github.com/yu830/rl-posttrain-sparse-scoring/actions) for actual run results.
+
+### Real Worker and documents
+
 The [experimental Worker reproduction](./docs/experimental-reproduction.md) covers the fixed environment, long-sequence Dense/Chunked comparison, no-fraction ABBA controls and response-mask tests.
 
 These commands rebuild the documentation, not a scoring service or benchmark. Requirements: XeLaTeX, BibTeX, Poppler (`pdftoppm`, `pdfinfo`, `pdftotext`), Python 3 with Pillow, and the bundled limited-glyph font. For example:

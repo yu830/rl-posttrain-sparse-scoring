@@ -1,0 +1,108 @@
+name: CPU regression tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cpu-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CUDA_VISIBLE_DEVICES: ""
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+      TOKENIZERS_PARALLELISM: "false"
+      OMP_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+      PYTHONPATH: ${{ github.workspace }}
+      VERL_6920_SOURCE: ${{ runner.temp }}/verl-6920
+      CI_TEST_REPORT: ${{ runner.temp }}/cpu-pytest.xml
+    steps:
+      - name: Check out project
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+          pip-version: "26.2.2"
+          cache: pip
+          cache-dependency-path: requirements-ci.lock
+      - name: Install hash-locked CPU dependencies
+        run: |
+          python -m pip install --disable-pip-version-check --require-hashes --only-binary=:all: -r requirements-ci.lock
+          python -m pip check
+      - name: Verify CPU-only runtime
+        run: |
+          python - <<'PY'
+          import sys
+          import torch
+          print(sys.version)
+          print(torch.__version__)
+          assert torch.__version__ == "2.14.1+cpu"
+          assert torch.version.cuda is None
+          assert not torch.cuda.is_available()
+          PY
+      - name: Fetch pinned verl source for patch checks
+        run: |
+          git init "$VERL_6920_SOURCE"
+          git -C "$VERL_6920_SOURCE" fetch --depth=1 https://github.com/verl-project/verl.git 87cd055e872f9fdd7b976fcd797a0934b6dba265
+          git -C "$VERL_6920_SOURCE" checkout --detach FETCH_HEAD
+          test "$(git -C "$VERL_6920_SOURCE" rev-parse HEAD)" = 87cd055e872f9fdd7b976fcd797a0934b6dba265
+      - name: Check source syntax
+        run: |
+          python -m compileall -q reference integrations scripts tests
+          bash -n scripts/build_assets.sh
+          bash -n scripts/build_experimental_report.sh
+      - name: Run deterministic CPU regressions
+        # These two actual trainer-runtime parity cases use the separate Worker
+        # environment. All other CPU cases, including pinned-source patch checks,
+        # run here. GPU parameters are not collected in this CPU-only runtime.
+        run: >-
+          python -m pytest -q -ra --strict-config --strict-markers
+          --deselect=tests/test_worker_to_student_step.py::test_all_metrics_equal_actual_pinned_trainer
+          --junitxml="$CI_TEST_REPORT"
+      - name: Check test coverage and publish scope
+        if: always()
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          root = ET.parse(os.environ["CI_TEST_REPORT"]).getroot()
+          suites = [root] if root.tag == "testsuite" else root.findall(".//testsuite")
+          counts = {name: sum(int(suite.get(name, "0")) for suite in suites)
+                    for name in ("tests", "failures", "errors", "skipped")}
+          print(counts)
+          summary = (
+              "## CPU regression scope\n"
+              f"Tests: {counts['tests']}; failures: {counts['failures']}; "
+              f"errors: {counts['errors']}; skipped: {counts['skipped']}.\n\n"
+              "The two actual upstream trainer metric-parity cases are explicitly deselected. "
+              "Pinned verl patch checks and the remaining CPU tests run with no model downloads. "
+              "CUDA parameters, real GPU Teacher Worker, GPU benchmarks and RL training are outside this job.\n"
+          )
+          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a") as stream:
+              stream.write(summary)
+          assert counts["tests"] >= 171, "unexpectedly reduced CPU test coverage"
+          assert counts["skipped"] == 0, "unexpected environment skips"
+          assert counts["failures"] == 0 and counts["errors"] == 0
+          PY
+      - name: Preserve pytest report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cpu-pytest-${{ github.sha }}
+          path: ${{ runner.temp }}/cpu-pytest.xml
+          retention-days: 14
+          if-no-files-found: warn

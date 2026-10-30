@@ -1,0 +1,7 @@
+# Linux x86_64 / CPython 3.12 CPU regression environment.
+# The CPU wheel is pinned directly so installing CI cannot pull CUDA packages.
+--index-url https://pypi.org/simple
+torch @ https://download-r2.pytorch.org/whl/cpu/torch-2.14.1%2Bcpu-cp312-cp312-manylinux_2_28_x86_64.whl#sha256=5a6363570c753812540a05eb82380e329469cbe668643e88111414c12627711f
+transformers==5.19.0
+pytest==9.2.0
+numpy==2.3.5
