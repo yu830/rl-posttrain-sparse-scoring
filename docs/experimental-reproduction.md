@@ -17,6 +17,7 @@ export MODEL_DIR=/absolute/path/to/Qwen2.5-0.5B-Instruct
 export WORKER_DEPS=/absolute/path/to/optional-worker-dependencies
 export OUT_DIR=/absolute/path/to/a/new/persistent-output-directory
 cd "$SCORING_DIR"
+. .venv/bin/activate
 mkdir -p "$OUT_DIR"
 export PYTHONPATH="$SCORING_DIR:$WORKER_DEPS${PYTHONPATH:+:$PYTHONPATH}"
 ```
@@ -49,8 +50,12 @@ for item in dense-a0 chunk-b0 chunk-b1 dense-a1; do
   case "$item" in dense-*) mode=dense ;; *) mode=chunked ;; esac
   python scripts/long_worker_probe.py --verl-dir "$VERL_DIR" --model-dir "$MODEL_DIR" \
     --out "$OUT_DIR/$item.json" --mode "$mode" --lengths 1024 --k 32 \
-    --chunk-rows 256 --warmup 1 --repeats 3
+    --chunk-rows 256 --warmup 1 --repeats 3 || break
 done
+python scripts/compare_capacity_outputs.py --dense "$OUT_DIR/dense-a0.call01.pt" \
+  --candidate "$OUT_DIR/dense-a1.call01.pt" --out "$OUT_DIR/natural-aa.json"
+python scripts/compare_capacity_outputs.py --dense "$OUT_DIR/chunk-b0.call01.pt" \
+  --candidate "$OUT_DIR/chunk-b1.call01.pt" --out "$OUT_DIR/natural-bb.json"
 python scripts/compare_capacity_outputs.py --dense "$OUT_DIR/dense-a0.call01.pt" \
   --candidate "$OUT_DIR/chunk-b0.call01.pt" --out "$OUT_DIR/natural-ab.json"
 ```
