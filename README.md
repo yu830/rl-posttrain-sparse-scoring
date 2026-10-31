@@ -25,25 +25,14 @@ A compact API response does not guarantee a compact execution path: a dense LM h
 
 ## System overview
 
-This figure separates **input alignment and readout policy** from **FSDP2 model execution**. Both strategies preserve the same Teacher Scoring contract; the important difference is **when vocabulary-sized tensors are materialized and released**.
+<p align="center"><img src="./docs/architecture/system-overview.en.svg" alt="Teacher scoring execution and validation architecture" width="920"></p>
 
-<p align="center"><img src="./docs/architecture/system-overview.en.svg" alt="Real Teacher Worker, FSDP2, dense readout and row-chunked execution" width="1100"></p>
+- The opt-in adapter runs within the normal FSDP2 forward and preserves the tied head and module hooks.
+- The dense baseline materializes the full logits tensor; the chunked path reduces one row tile at a time and returns compact results.
+- Candidate scores use the full-vocabulary normalizer, and teacher Top-K is selected over the full vocabulary.
+- A separate validation feeds actual Worker outputs into the pinned reverse-KL consumer and checks student gradients and a restricted final-RMSNorm update.
 
-- **Input contract:** Nested candidate IDs are aligned with padded rows through the real attention mask; invalid IDs and offsets are rejected before the outer FSDP call.
-- **Readout policy:** A requested chunk size and optional estimated LM-head budget select the row tile. The budget is not a device-wide memory cap.
-- **Execution:** Dense returns full logits before reduction. Chunked performs full-vocabulary LogSumExp, candidate Gather, and Teacher Top-K **within each tile**, then releases its temporary logits.
-- **Output / validation:** Both paths return the original two-field CPU nested output. The dashed Worker-to-Student edge denotes a separate restricted consumer test, not an end-to-end Ray Trainer.
-
-[Editable system SVG](./docs/architecture/system-overview.en.svg) · [PNG](./docs/architecture/system-overview.en.png)
-
-<details>
-<summary><strong>Expand: LM-head tensor lifetime and measured allocation</strong></summary>
-
-<p align="center"><img src="./docs/architecture/readout-lifecycle.en.svg" alt="Materialization of full logits compared with disposable row tiles" width="1100"></p>
-
-[Vector SVG](./docs/architecture/readout-lifecycle.en.svg) · [PNG](./docs/architecture/readout-lifecycle.en.png)
-
-</details>
+[Architecture SVG](./docs/architecture/system-overview.en.svg) · [PNG](./docs/architecture/system-overview.en.png)
 
 ## Verified results
 

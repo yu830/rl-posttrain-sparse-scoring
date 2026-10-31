@@ -25,25 +25,14 @@ GPU 对照条件：Qwen2.5-0.5B-Instruct、BF16、单张 RTX 5070 Laptop GPU、F
 
 ## 系统概览
 
-这张架构图将 **输入对齐与策略选择** 和 **实际 FSDP2 执行路径** 分开。Dense 与 Chunked 返回相同的 Teacher Scoring 契约，关键差别是完整词表 Logits 的**物化时机和内存生命周期**。
+<p align="center"><img src="./docs/architecture/system-overview.zh-CN.svg" alt="教师评分执行与验证架构" width="920"></p>
 
-<p align="center"><img src="./docs/architecture/system-overview.zh-CN.svg" alt="真实 Teacher Worker、FSDP2、Dense 与逐块读出路径" width="1100"></p>
+- 可选适配器运行在正常的 FSDP2 forward 内，保留共享输出头和模块 hooks。
+- 稠密基线生成完整 logits；分块路径逐块归约，返回紧凑结果。
+- 候选分数使用全词表归一化项，教师 Top-K 也在完整词表上选取。
+- 独立验证将真实 Worker 输出送入固定版本的反向 KL 消费端，检查学生梯度及一次受限的最终 RMSNorm 更新。
 
-- **输入契约：** Nested 候选 ID 按 Attention Mask 对齐至 Padded 模型行，并在进入 FSDP 前检查 ID 范围和 Offsets。
-- **预算决策：** 根据 Chunk Size 和可选的 LM Head 显存估算选择行块；预算不代表整卡显存硬上限。
-- **执行差异：** Dense 返回完整 Logits 后再归约；Chunked 在**每个 Tile 内**执行全词表 LogSumExp、候选 Gather 与 Teacher Top-K，随后释放当前 Tile。
-- **输出与验证：** 两种路径均返回原有的两个 CPU Nested Tensor；虚线边连接的是独立的 Reverse-KL / 受限 Student 更新实验，而非完整 Ray Trainer。
-
-[可编辑系统图 SVG](./docs/architecture/system-overview.zh-CN.svg) · [PNG](./docs/architecture/system-overview.zh-CN.png)
-
-<details>
-<summary><strong>展开：LM Head 分块执行与张量生命周期</strong></summary>
-
-<p align="center"><img src="./docs/architecture/readout-lifecycle.zh-CN.svg" alt="完整 Logits 与逐块 Logits 的物化和释放" width="1100"></p>
-
-[矢量 SVG](./docs/architecture/readout-lifecycle.zh-CN.svg) · [PNG](./docs/architecture/readout-lifecycle.zh-CN.png)
-
-</details>
+[架构图 SVG](./docs/architecture/system-overview.zh-CN.svg) · [PNG](./docs/architecture/system-overview.zh-CN.png)
 
 ## 验证结果
 

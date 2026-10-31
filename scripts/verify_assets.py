@@ -38,7 +38,6 @@ for lang in ('en', 'zh-CN'):
     required += [f'docs/reports/technical-report.{lang}.{ext}' for ext in ('tex','pdf')]
     required += [f'assets/report-cover.{lang}.png', f'docs/benchmark-methodology.{lang}.md']
     required += [f'docs/architecture/system-overview.{lang}.{ext}' for ext in ('svg','png')]
-    required += [f'docs/architecture/readout-lifecycle.{lang}.{ext}' for ext in ('svg','png')]
     required += [f'docs/reports/memory-bounded-experimental.{lang}.{ext}' for ext in ('tex','pdf')]
 required += ['docs/figures/worker-summary.svg', 'docs/figures/worker-summary.png']
 for p in required:
@@ -110,7 +109,7 @@ for lang in ('en','zh-CN'):
     system_geometries.append([(el.tag.rsplit('}',1)[-1],tuple(sorted(el.attrib.items())))
                               for el in system.iter() if el.tag.rsplit('}',1)[-1] in ('rect','line','path')])
     with Image.open(ROOT/f'docs/architecture/system-overview.{lang}.png') as im:
-        check(im.width>=1600 and im.height>=1200, f'{lang}: system overview PNG resolution')
+        check(im.width>=1600 and im.height>=1400, f'{lang}: system overview PNG resolution')
     report=f'docs/reports/memory-bounded-experimental.{lang}.pdf'
     meta=run('pdfinfo',report)
     report_text=run('pdftotext',report,'-')
