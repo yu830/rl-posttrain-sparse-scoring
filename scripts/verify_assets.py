@@ -40,6 +40,10 @@ for lang in ('en', 'zh-CN'):
     required += [f'docs/architecture/system-overview.{lang}.{ext}' for ext in ('svg','png')]
     required += [f'docs/reports/memory-bounded-experimental.{lang}.{ext}' for ext in ('tex','pdf')]
 required += ['docs/figures/worker-summary.svg', 'docs/figures/worker-summary.png']
+for lang in ('en','zh-CN'):
+    for name in ('architecture','readout-lifetime'):
+        required += [f'docs/architecture/tikz/{name}.{lang}.{ext}' for ext in ('tex','svg','png','pdf')]
+required += ['docs/architecture/tikz/README.md']
 for p in required:
     check((ROOT / p).is_file(), f'required asset: {p}')
 if errors:
@@ -77,7 +81,7 @@ switch = '[English](./README.md) | [简体中文](./README.zh-CN.md)'
 for name, lang in [('README.md','en'), ('README.zh-CN.md','zh-CN')]:
     s = read(name)
     check(s.startswith(switch), f'{name}: language switch')
-    for p in [f'./docs/architecture/system-overview.{lang}.svg',f'./docs/reports/memory-bounded-experimental.{lang}.pdf',f'./docs/architecture/system-overview.{lang}.png']:
+    for p in [f'./docs/architecture/tikz/architecture.{lang}.svg',f'./docs/reports/memory-bounded-experimental.{lang}.pdf',f'./docs/architecture/tikz/architecture.{lang}.tex']:
         check(p in s, f'{name}: matching {p}')
     other = 'zh-CN' if lang == 'en' else 'en'
     check(f'./docs/reports/memory-bounded-experimental.{other}.pdf' not in s, f'{name}: no wrong-language report link')

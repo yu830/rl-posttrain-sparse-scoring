@@ -6,7 +6,7 @@
 
 Teacher scoring in LLM post-training can allocate a large token-by-vocabulary logits tensor even when the consumer needs only compact outputs. This project integrates a row-chunked LM-head readout into a pinned verl `TeacherFSDPWorker`, preserving full-vocabulary-normalized candidate logprobs and the teacher's ordered Top-K. The implementation and its consumer path were evaluated in a single-GPU Qwen2/FSDP2 experimental setup.
 
-[Technical report](./docs/reports/memory-bounded-experimental.en.pdf) · [Report source](./docs/reports/memory-bounded-experimental.en.tex) · [Reproduce](./docs/experimental-reproduction.md) · [Experiment data](./results/worker-benchmark-summary.json) · [Historical G2 results](./docs/g2-results.en.md)
+[Technical report](./docs/reports/memory-bounded-experimental.en.pdf) · [Report source](./docs/reports/memory-bounded-experimental.en.tex) · [Reproduce](./docs/experimental-reproduction.md) · [Experiment data](./results/worker-benchmark-summary.json)
 
 ## Key results
 
@@ -21,18 +21,37 @@ The GPU comparison uses Qwen2.5-0.5B-Instruct, BF16, one RTX 5070 Laptop GPU, FS
 
 ## Why this matters
 
-A compact API response does not guarantee a compact execution path: a dense LM head may still materialize `N × V` logits before selecting the requested values. Moving row chunking **before** the head limits the live logits tile while retaining the full-vocabulary normalizer and teacher Top-K required by the scoring contract. The project illustrates how to change a model execution path while respecting distributed-module lifecycle, output layout and a downstream training consumer—concerns shared by LLM runtime and RL infrastructure work.
+A compact API response does not guarantee a compact execution path: a dense LM head may still materialize `N × V` logits before selecting the requested values. Moving row chunking **before** the head limits the live logits tile while retaining the full-vocabulary normalizer and teacher Top-K required by the scoring contract. The engineering challenge is not the chunking primitive: it is placing the readout at the correct model boundary without changing what the training consumer receives.
 
 ## System overview
 
-<p align="center"><img src="./docs/architecture/system-overview.en.svg" alt="Teacher scoring execution and validation architecture" width="920"></p>
+The readout change runs inside the **actual `TeacherFSDPWorker`**, not as a post-processing pass over logits that already exist. Dense and Chunked are *alternative* execution paths for the same scoring request.
 
-- The opt-in adapter runs within the normal FSDP2 forward and preserves the tied head and module hooks.
-- The dense baseline materializes the full logits tensor; the chunked path reduces one row tile at a time and returns compact results.
-- Candidate scores use the full-vocabulary normalizer, and teacher Top-K is selected over the full vocabulary.
-- A separate validation feeds actual Worker outputs into the pinned reverse-KL consumer and checks student gradients and a restricted final-RMSNorm update.
+<p align="center"><img src="./docs/architecture/tikz/architecture.en.svg" alt="Qwen2 FSDP2 Worker: input preparation, execution policy, dense versus chunked readout, common output contract" width="900"></p>
 
-[Architecture SVG](./docs/architecture/system-overview.en.svg) · [PNG](./docs/architecture/system-overview.en.png)
+The critical boundary is **before the LM head**. Dense projects every hidden row to full `[N,V]` logits and reduces them after the outer FSDP forward. The bounded path projects at most `B` rows per tile; **inside each tile**, it performs full-vocabulary FP32 log-sum-exp, candidate gather and teacher Top-K, writes the compact output, then discards the temporary logits.
+
+<details>
+<summary>LM-head tensor lifetime: full logits versus row tiles</summary>
+
+<p align="center"><img src="./docs/architecture/tikz/readout-lifetime.en.svg" alt="Complete N by V logits versus temporary B by V tiles and compact N by K outputs" width="850"></p>
+
+Temporary logits storage changes from **O(NV)** to **O(BV)**, alongside **O(NK)** compact outputs. Backbone hidden states, FSDP buffers, FP32 intermediates and kernel workspaces still use memory. Projection arithmetic remains approximately O(NVd); this is an **allocation and tensor-lifetime optimization**, not removal of the full-vocabulary computation.
+
+</details>
+
+[Editable architecture · TikZ](./docs/architecture/tikz/architecture.en.tex) · [Vector PDF](./docs/architecture/tikz/architecture.en.pdf) · [Editable lifetime diagram](./docs/architecture/tikz/readout-lifetime.en.tex) · [Figure build notes](./docs/architecture/tikz/README.md)
+
+## Engineering decisions
+
+| Question | Implemented choice | Engineering consequence |
+| --- | --- | --- |
+| **What must the teacher return?** | Keep full-vocabulary-normalized candidate logprobs **and** the teacher's own ordered Top-K, rather than substituting candidate-only probabilities. | Preserves the fixed reverse-KL consumer and diagnostics without changing the scoring objective. |
+| **Where is the LM head intercepted?** | Install the [Qwen2 adapter](./reference/memory_bounded_teacher.py) before FSDP wrapping, enter the outer forward once, and invoke `lm_head` as a module for each tile. | Retains tied weights and module/FSDP hooks; prevents full-logits materialization in the bounded path. |
+| **How are budget and fallback handled?** | The [chunk planner](./reference/memory_budget.py) estimates head-readout allocations; the [verl bridge](./integrations/verl_6920/bridge.py) validates candidates and nested offsets, and selects native dense fallback when appropriate. | Keeps resource policy explicit. Invalid requests fail early; a head estimate is not misrepresented as a device-wide hard limit. |
+| **How is numerical safety established?** | Compare full compact outputs against Dense, then verify response masks, [fixed upstream loss](./scripts/worker_to_student_step.py), Student gradients and one restricted RMSNorm update. | Tests the downstream contract, not just an isolated head or matching scalar loss. |
+
+The implementation is a pinned, opt-in [verl patch](./integrations/verl_6920/memory-bounded-teacher.patch) that preserves the original path when disabled. Row chunking is established prior art; the engineering contribution is **contract-preserving integration and measured resource behavior in a real FSDP Teacher path**.
 
 ## Verified results
 
@@ -88,5 +107,6 @@ The measured implementation targets a tied-head Qwen2 model on one GPU with FSDP
 | [`tests/`](./tests/) | Scoring, integration and regression tests |
 | [`results/`](./results/) | Aggregated results and evidence manifest |
 | [`docs/reports/`](./docs/reports/) | Bilingual reports and editable sources |
+| [`docs/architecture/tikz/`](./docs/architecture/tikz/) | Editable serif TikZ diagrams, vector exports and build notes |
 
-The earlier selected-logit fusion proposal remains **NO-GO** for the full Teacher contract; the [historical results](./docs/g2-results.en.md) retain its negative findings.
+[Earlier approaches and negative results](./docs/g2-results.en.md) record why the candidate-only proposal could not replace the complete Teacher output contract.

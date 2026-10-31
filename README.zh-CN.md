@@ -6,7 +6,7 @@
 
 LLM 后训练中的教师评分即使只返回紧凑结果，也可能先分配巨大的 token × 词表 logits 张量。本项目在固定版本的 verl `TeacherFSDPWorker` 中，将 LM Head 读出按行分块，保留学生候选 token 的全词表归一化 logprob 和教师自身的有序 Top-K。实现及其消费者路径已在单 GPU Qwen2/FSDP2 实验环境中验证。
 
-[技术报告](./docs/reports/memory-bounded-experimental.zh-CN.pdf) · [报告源文件](./docs/reports/memory-bounded-experimental.zh-CN.tex) · [复现实验](./docs/experimental-reproduction.md) · [实验数据](./results/worker-benchmark-summary.json) · [历史 G2 结果](./docs/g2-results.zh-CN.md)
+[技术报告](./docs/reports/memory-bounded-experimental.zh-CN.pdf) · [报告源文件](./docs/reports/memory-bounded-experimental.zh-CN.tex) · [复现实验](./docs/experimental-reproduction.md) · [实验数据](./results/worker-benchmark-summary.json)
 
 ## 关键结果
 
@@ -21,18 +21,37 @@ GPU 对照条件：Qwen2.5-0.5B-Instruct、BF16、单张 RTX 5070 Laptop GPU、F
 
 ## 工程价值
 
-返回紧凑结果并不意味着执行过程也紧凑：稠密 LM Head 仍可能先生成完整的 `N × V` logits。将行分块前移到 **LM Head 之前**，可以限制同时存活的 logits 大小，同时保留评分契约所需的全词表归一化项和教师 Top-K。这一实现展示了如何在优化模型执行路径时兼顾分布式模块生命周期、输出布局和下游训练消费者，适用于 LLM Runtime 与 RL Infra 的工程问题。
+返回紧凑结果并不意味着执行过程也紧凑：稠密 LM Head 仍可能先生成完整的 `N × V` logits。将行分块前移到 **LM Head 之前**，可以限制同时存活的 logits 大小，同时保留评分契约所需的全词表归一化项和教师 Top-K。工程难点并非行分块原语，而是找到正确的模型执行边界，在保留 FSDP 生命周期、输入布局和下游消费语义的前提下落实优化。
 
-## 系统概览
+## 系统架构
 
-<p align="center"><img src="./docs/architecture/system-overview.zh-CN.svg" alt="教师评分执行与验证架构" width="920"></p>
+项目修改的是**真实 `TeacherFSDPWorker` 内的模型执行路径**，而不是在完整 logits 已生成后再进行切分。Dense 和 Chunked 是同一评分请求的**两条备选执行路径**，输出契约保持一致。
 
-- 可选适配器运行在正常的 FSDP2 forward 内，保留共享输出头和模块 hooks。
-- 稠密基线生成完整 logits；分块路径逐块归约，返回紧凑结果。
-- 候选分数使用全词表归一化项，教师 Top-K 也在完整词表上选取。
-- 独立验证将真实 Worker 输出送入固定版本的反向 KL 消费端，检查学生梯度及一次受限的最终 RMSNorm 更新。
+<p align="center"><img src="./docs/architecture/tikz/architecture.zh-CN.svg" alt="Qwen2 FSDP2 教师评分：输入准备、预算决策、稠密与分块读出及一致的紧凑输出" width="900"></p>
 
-[架构图 SVG](./docs/architecture/system-overview.zh-CN.svg) · [PNG](./docs/architecture/system-overview.zh-CN.png)
+核心改动位于 **LM Head 之前**。Dense 一次性生成 `[N,V]` logits，在外层 FSDP forward 返回后归约；显存受控路径每次只投影最多 `B` 行，在**每个块内**完成全词表 FP32 LogSumExp、候选 Gather 和教师 Top-K，将结果写入紧凑缓冲区后释放临时 logits。
+
+<details>
+<summary>展开查看 LM Head 张量生命周期</summary>
+
+<p align="center"><img src="./docs/architecture/tikz/readout-lifetime.zh-CN.svg" alt="完整 N×V logits 与临时 B×V 块及 N×K 紧凑输出的生命周期对照" width="850"></p>
+
+临时 logits 存储由 **O(NV)** 变为 **O(BV)**，另有 **O(NK)** 紧凑输出。Transformer 隐状态、FSDP 缓冲区、FP32 中间张量和 Kernel Workspace 仍占用显存。全词表投影计算量近似保持 O(NVd)：这优化的是**分配行为和张量生命周期**，而不是消除绝大部分词表计算。
+
+</details>
+
+[可编辑 TikZ 架构图](./docs/architecture/tikz/architecture.zh-CN.tex) · [矢量 PDF](./docs/architecture/tikz/architecture.zh-CN.pdf) · [可编辑生命周期图](./docs/architecture/tikz/readout-lifetime.zh-CN.tex) · [构建说明](./docs/architecture/tikz/README.md)
+
+## 关键工程决策
+
+| 技术问题 | 实际实现与取舍 | 工程意义 |
+| --- | --- | --- |
+| **Teacher 必须返回什么？** | 保留学生候选的**全词表归一化 Logprob**和教师自身有序 Top-K，不替换为候选集条件概率。 | 保持固定 reverse-KL 消费者和诊断语义，不为省显存改变训练目标。 |
+| **在哪里接入 LM Head？** | FSDP 包装前安装 [Qwen2 读出适配器](./reference/memory_bounded_teacher.py)；外层 Forward 只进入一次，每块都调用 `lm_head` 模块本身。 | 保留共享权重及 FSDP/模块 Hooks，并在完整 Logits 物化前控制分配。 |
+| **预算控制和回退如何协作？** | [分块规划器](./reference/memory_budget.py)估算输出头开销；[verl 桥接层](./integrations/verl_6920/bridge.py)负责候选检查、Nested Offsets 对齐及必要的原生 Dense 回退。 | 资源策略清晰可追溯；非法输入提前拒绝，估算预算不冒充整卡显存硬上限。 |
+| **如何证明优化没有破坏训练语义？** | 与 Dense 逐值比较紧凑输出，并核对 Response Mask、[固定上游 Loss](./scripts/worker_to_student_step.py)、学生梯度及一次受限 RMSNorm 更新。 | 验证实际消费契约，不止对比标量 Loss 或孤立 LM Head 结果。 |
+
+工程交付为固定版本、可选启用的 [verl 补丁](./integrations/verl_6920/memory-bounded-teacher.patch)，关闭时保留原始路径。行分块本身已有先例；实际工程贡献是**将契约不变的显存受控读出接入具体 FSDP Teacher 链路，并测量资源收益及边界**。
 
 ## 验证结果
 
@@ -88,5 +107,6 @@ python scripts/compare_capacity_outputs.py --dense "$OUT_DIR/dense-1024.call01.p
 | [`tests/`](./tests/) | 评分、集成与回归测试 |
 | [`results/`](./results/) | 汇总结果与证据清单 |
 | [`docs/reports/`](./docs/reports/) | 中英文报告及可编辑源文件 |
+| [`docs/architecture/tikz/`](./docs/architecture/tikz/) | 可编辑衬线 TikZ 架构图、矢量输出与构建说明 |
 
-早期 selected-logit 融合方案对完整教师契约仍为 **NO-GO**；[历史结果](./docs/g2-results.zh-CN.md)保留了相应负结果。
+[早期方案及负结果](./docs/g2-results.zh-CN.md)记录了仅返回候选 Logits 为什么不能替代完整 Teacher 输出契约。

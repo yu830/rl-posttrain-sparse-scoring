@@ -1,0 +1,61 @@
+
+\documentclass[tikz,border=14pt]{standalone}
+\usepackage{fontspec}
+\usepackage{xeCJK}
+\setmainfont{Liberation Serif}
+\setsansfont{Liberation Sans}
+\setmonofont{DejaVu Sans Mono}[Scale=0.82]
+\setCJKmainfont{Noto Serif CJK SC}
+\setCJKsansfont{Noto Serif CJK SC}
+\setCJKmonofont{Noto Sans CJK SC}
+\usepackage{amsmath,amssymb}
+\usetikzlibrary{arrows.meta,calc}
+\definecolor{ink}{HTML}{1E1E1E}
+\definecolor{mid}{HTML}{5F5F5F}
+\definecolor{hair}{HTML}{B0B0B0}
+\definecolor{wash}{HTML}{F6F6F6}
+\tikzset{
+  line/.style={draw=ink,line width=0.55pt},
+  softline/.style={draw=hair,line width=0.45pt},
+  path/.style={draw=ink,line width=0.65pt,-{Latex[length=2.0mm,width=1.3mm]}},
+  ctrl/.style={draw=mid,line width=0.55pt,dashed,-{Latex[length=1.75mm,width=1.2mm]}},
+  smalltext/.style={font=\rmfamily\fontsize{8.7}{12.2}\selectfont,text=ink},
+  dimtext/.style={font=\rmfamily\fontsize{8.15}{11.7}\selectfont,text=mid},
+  code/.style={font=\ttfamily\fontsize{8.1}{11.6}\selectfont,text=ink},
+  h/.style={font=\rmfamily\bfseries\fontsize{10.1}{14.0}\selectfont,text=ink},
+  superh/.style={font=\rmfamily\bfseries\fontsize{14.4}{18.5}\selectfont,text=ink},
+}
+
+\begin{document}
+\begin{tikzpicture}[x=1cm,y=1.23cm]
+  \node[superh,anchor=west] at (0,0) {LM Head 的中间张量生命周期};
+  \node[dimtext,anchor=west] at (0,-0.42) {相同的评分契约，不同的峰值分配方式};
+  \draw[softline] (0,-0.73) -- (19,-0.73);
+  \node[h,anchor=west] at (.22,-1.20) {A0  Dense};
+  \node[smalltext,anchor=west] at (3.35,-1.20) {完整读出：先构建全部 $N\times V$ Logits，再归约。};
+  \node[smalltext,anchor=west] at (.22,-1.74) {$\mathbf H[N,d]\ \longrightarrow\ \mathrm{LMHead}\ \longrightarrow\ \mathbf Z[N,V]$};
+  % N-by-V block, drawn as a persistent dense tensor.
+  \foreach \i in {0,...,3}{\foreach \j in {0,...,24}{
+    \fill[black!30] (6.05+\j*.40,-1.64-\i*.205) rectangle ++(.35,-.16);
+  }}
+  \node[dimtext,anchor=west] at (.22,-2.69) {[N,V] 临时张量在归约期间存活};
+  \draw[softline] (0,-3.10) -- (19,-3.10);
+  \node[h,anchor=west] at (.22,-3.58) {A1  Chunked};
+  \node[smalltext,anchor=west] at (3.35,-3.58) {逐块读出：分块计算并归约，每次只保留 $B\times V$ Logits。};
+  \node[smalltext,anchor=west] at (.22,-4.12) {$\mathbf H_i[B,d]\ \longrightarrow\ \mathrm{LMHead}\ \longrightarrow\ \mathbf Z_i[B,V]$};
+  % Temporary tile is allocated, consumed, and released sequentially.
+  \foreach \tile in {0,1,2}{
+    \foreach \i in {0,...,1}{\foreach \j in {0,...,7}{
+      \fill[black!30] (6.05+\tile*4.05+\j*.40,-4.08-\i*.205) rectangle ++(.35,-.16);
+    }}
+  }
+  \draw[path] (9.20,-4.30) -- (9.78,-4.30);
+  \draw[path] (13.25,-4.30) -- (13.83,-4.30);
+  \node[dimtext,anchor=west] at (.22,-5.04) {逐块：LSE / Gather / Top-K → 写入 $[N,K]$ → 释放 $\mathbf Z_i$};
+  \draw[softline] (0,-5.37) -- (19,-5.37);
+  \node[smalltext,anchor=west] at (.20,-5.83) {完整 Logits 临时空间：$O(NV)$};
+  \node[smalltext,anchor=west] at (10.0,-5.83) {分块临时空间：$O(BV)$；紧凑结果 $O(NK)$};
+  \node[h,anchor=west] at (.20,-6.41) {已测（N=8192，K=32，B=256）：PyTorch peak allocated 3596.6 → 681.6 MiB（−81.05\%）};
+  \node[dimtext,anchor=west] at (.20,-6.94) {Transformer 隐状态、模型参数、FSDP 缓冲区及 workspace 均不包含在以上简化临时空间表达式中。};
+\end{tikzpicture}
+\end{document}
