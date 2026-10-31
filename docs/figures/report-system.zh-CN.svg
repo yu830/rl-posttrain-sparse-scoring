@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="468pt" height="406.8pt" viewBox="0 0 468 406.8" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-10-31T13:13:41.742011</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.1, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 406.8
+L 468 406.8
+L 468 0
+L 0 0
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 239.39136 252.435672
+L 448.30656 252.435672
+L 448.30656 169.51356
+L 239.39136 169.51356
+z
+" clip-path="url(#p46d4185112)" style="fill: #f3f3f3"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 234 29.589893
+Q 234 34.765873 234 39.047425
+" clip-path="url(#p46d4185112)" style="fill: none; stroke: #404040; stroke-width: 0.8; stroke-linecap: round"/>
+    <path d="M 235.6 35.847425
+L 234 39.047425
+L 232.4 35.847425
+z
+" clip-path="url(#p46d4185112)" style="fill: #404040; stroke: #404040; stroke-width: 0.8; stroke-linecap: round"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 234 86.597774
+Q 234 91.575034 234 95.657866
+" clip-path="url(#p46d4185112)" style="fill: none; stroke: #404040; stroke-width: 0.8; stroke-linecap: round"/>
+    <path d="M 235.6 92.457866
+L 234 95.657866
+L 232.4 92.457866
+z
+" clip-path="url(#p46d4185112)" style="fill: #404040; stroke: #404040; stroke-width: 0.8; stroke-linecap: round"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 123.9264 148.389721
+Q 123.9264 153.764757 123.9264 158.245365
+" clip-path="url(#p46d4185112)" style="fill: none; stroke: #404040; stroke-width: 0.8; stroke-linecap: round"/>
+    <path d="M 125.5264 155.045365
+L 123.9264 158.245365
+L 122.3264 155.045365
+z
+" clip-path="url(#p46d4185112)" style="fill: #404040; stroke: #404040; stroke-width: 0.8; stroke-linecap: round"/>
+   </g>
+   <g id="patch_6">
+    <path d="M 344.0736 148.389721
+Q 344.0736 153.764757 344.0736 158.245365
+" clip-path="url(#p46d4185112)" style="fill: none; stroke: #404040; stroke-width: 0.8; stroke-linecap: round"/>
+    <path d="M 345.6736 155.045365
+L 344.0736 158.245365
+L 342.4736 155.045365
+z
+" clip-path="url(#p46d4185112)" style="fill: #404040; stroke: #404040; stroke-width: 0.8; stroke-linecap: round"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 234 272.374225
+Q 234 277.749261 234 282.229869
+" clip-path="url(#p46d4185112)" style="fill: none; stroke: #404040; stroke-width: 0.8; stroke-linecap: round"/>
+    <path d="M 235.6 279.029869
+L 234 282.229869
+L 232.4 279.029869
+z
+" clip-path="url(#p46d4185112)" style="fill: #404040; stroke: #404040; stroke-width: 0.8; stroke-linecap: round"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 234 329.387168
+Q 234 333.765407 234 337.24922
+" clip-path="url(#p46d4185112)" style="fill: none; stroke: #404040; stroke-width: 0.8; stroke-linecap: round"/>
+    <path d="M 235.6 334.04922
+L 234 337.24922
+L 232.4 334.04922
+z
+" clip-path="url(#p46d4185112)" style="fill: #404040; stroke: #404040; stroke-width: 0.8; stroke-linecap: round"/>
+   </g>
+   <g id="line2d_1">
+    <path d="M 234 136.424448
+L 234 146.391048
+" clip-path="url(#p46d4185112)" style="fill: none; stroke: #777777; stroke-width: 0.7; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_2">
+    <path d="M 123.9264 146.391048
+L 344.0736 146.391048
+" clip-path="url(#p46d4185112)" style="fill: none; stroke: #777777; stroke-width: 0.7; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_3">
+    <path d="M 20.592 169.51356
+L 228.60864 169.51356
+" clip-path="url(#p46d4185112)" style="fill: none; stroke: #555555; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_4">
+    <path d="M 239.39136 169.51356
+L 448.30656 169.51356
+" clip-path="url(#p46d4185112)" style="fill: none; stroke: #202020; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_5">
+    <path d="M 123.9264 261.20628
+L 123.9264 270.375552
+" clip-path="url(#p46d4185112)" style="fill: none; stroke: #777777; stroke-width: 0.7; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_6">
+    <path d="M 344.0736 261.20628
+L 344.0736 270.375552
+" clip-path="url(#p46d4185112)" style="fill: none; stroke: #777777; stroke-width: 0.7; stroke-linecap: square"/>
+   </g>
+   <g id="line2d_7">
+    <path d="M 123.9264 270.375552
+L 344.0736 270.375552
+" clip-path="url(#p46d4185112)" style="fill: none; stroke: #777777; stroke-width: 0.7; stroke-linecap: square"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 10px; font-family: 'DejaVu Sans', 'SimHei'; text-anchor: middle; fill: #202020" x="234" y="18.967373" transform="rotate(-0 234 18.967373)">学生候选 ID  ·  填充输入与 attention mask</text>
+   </g>
+   <g id="text_2">
+    <text style="font-weight: 700; font-size: 11.1px; font-family: 'DejaVu Sans', 'SimHei'; text-anchor: middle; fill: #202020" x="234" y="59.974144" transform="rotate(-0 234 59.974144)">TeacherFSDPWorker</text>
+   </g>
+   <g id="text_3">
+    <text style="font-size: 9.1px; font-family: 'DejaVu Sans', 'SimHei'; text-anchor: middle; fill: #505050" x="234" y="76.854446" transform="rotate(-0 234 76.854446)">FSDP2 封装的 Qwen2  ·  正常 forward 与模块 hooks</text>
+   </g>
+   <g id="text_4">
+    <text style="font-weight: 700; font-size: 10.7px; font-family: 'DejaVu Sans', 'SimHei'; text-anchor: middle; fill: #202020" x="234" y="115.566229" transform="rotate(-0 234 115.566229)">Transformer 主干网络</text>
+   </g>
+   <g id="text_5">
+    <text style="font-size: 9.2px; font-family: 'DejaVu Sans', 'SimHei'; text-anchor: middle; fill: #505050" x="234" y="130.756801" transform="rotate(-0 234 130.756801)">隐藏状态</text>
+   </g>
+   <g id="text_6">
+    <text style="font-weight: 700; font-size: 10.1px; font-family: 'DejaVu Sans', 'SimHei'; text-anchor: start; fill: #202020" x="28.67904" y="186.376468" transform="rotate(-0 28.67904 186.376468)">A0   稠密基线</text>
+   </g>
+   <g id="text_7">
+    <text style="font-size: 9.2px; font-family: 'DejaVu Sans', 'SimHei'; text-anchor: start; fill: #202020" x="28.67904" y="206.883656" transform="rotate(-0 28.67904 206.883656)">完整 LM Head 读出</text>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 9.2px; font-family: 'DejaVu Sans', 'SimHei'; text-anchor: start; fill: #202020" x="28.67904" y="226.019528" transform="rotate(-0 28.67904 226.019528)">生成完整 N × V logits</text>
+   </g>
+   <g id="text_9">
+    <text style="font-weight: 700; font-size: 10.1px; font-family: 'DejaVu Sans', 'SimHei'; text-anchor: start; fill: #202020" x="247.4784" y="186.415921" transform="rotate(-0 247.4784 186.415921)">A1   显存受控读出</text>
+   </g>
+   <g id="text_10">
+    <text style="font-size: 9.2px; font-family: 'DejaVu Sans', 'SimHei'; text-anchor: start; fill: #202020" x="247.4784" y="206.901625" transform="rotate(-0 247.4784 206.901625)">按行分块执行 LM Head</text>
+   </g>
+   <g id="text_11">
+    <text style="font-size: 8.7px; font-family: 'DejaVu Sans', 'SimHei'; text-anchor: start; fill: #202020" x="247.4784" y="225.85654" transform="rotate(-0 247.4784 225.85654)">逐块 log-sum-exp、候选 gather 与教师 Top-K</text>
+   </g>
+   <g id="text_12">
+    <text style="font-size: 9.1px; font-family: 'DejaVu Sans', 'SimHei'; text-anchor: start; fill: #202020" x="247.4784" y="245.126201" transform="rotate(-0 247.4784 245.126201)">不保留完整 N × V logits</text>
+   </g>
+   <g id="text_13">
+    <text style="font-weight: 700; font-size: 10.5px; font-family: 'DejaVu Sans', 'SimHei'; text-anchor: middle; fill: #202020" x="234" y="302.963114" transform="rotate(-0 234 302.963114)">紧凑教师输出</text>
+   </g>
+   <g id="text_14">
+    <text style="font-size: 9px; font-family: 'DejaVu Sans', 'SimHei'; text-anchor: middle; fill: #505050" x="234" y="319.266084" transform="rotate(-0 234 319.266084)">候选 logprob  ·  教师 Top-K ID  ·  嵌套张量 offset</text>
+   </g>
+   <g id="text_15">
+    <text style="font-weight: 700; font-size: 10.3px; font-family: 'DejaVu Sans', 'SimHei'; text-anchor: middle; fill: #202020" x="234" y="358.258269" transform="rotate(-0 234 358.258269)">Worker 到 Student 的验证</text>
+   </g>
+   <g id="text_16">
+    <text style="font-size: 8.8px; font-family: 'DejaVu Sans', 'SimHei'; text-anchor: middle; fill: #505050" x="234" y="374.621591" transform="rotate(-0 234 374.621591)">反向 KL 消费端  ·  学生梯度  ·  受限的 RMSNorm 更新</text>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="p46d4185112">
+   <rect x="9.36" y="4.068" width="449.28" height="398.664"/>
+  </clipPath>
+ </defs>
+</svg>

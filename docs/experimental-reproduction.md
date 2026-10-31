@@ -186,6 +186,10 @@ uv pip install --python "$PLOT_ENV/bin/python" matplotlib==3.11.1
 "$PLOT_ENV/bin/python" scripts/plot_worker_results.py
 ```
 
-The public system overview and summary chart are editable SVG files. Regenerate them from the repository and the checked-in benchmark summary with `python scripts/render_public_assets.py`; export the SVGs to PNG with an SVG renderer for the report figures.
+The public system overview and summary chart are editable SVG files. Regenerate them from the repository and the checked-in benchmark summary with `python scripts/render_public_assets.py`; export the SVGs to PNG with an SVG renderer when needed.
 
-首页系统图和汇总图以可编辑 SVG 保存；在仓库中运行 `python scripts/render_public_assets.py` 可根据已提交的汇总数据重建，报告用 PNG 可由 SVG 渲染器导出。
+首页系统图和汇总图以可编辑 SVG 保存；在仓库中运行 `python scripts/render_public_assets.py` 可根据已提交的汇总数据重建，如需 PNG，可使用 SVG 渲染器导出。
+
+Generate the monochrome report diagrams and allocation plots with `python scripts/render_report_figures.py`. Use Matplotlib 3.11.1; pass `--cjk-font /absolute/path/to/a/Chinese-font.ttf` if the default SimHei font is unavailable. The allocation plots use the checked-in benchmark summary; the PDF figures are vector assets.
+
+报告中的黑白架构图和分配图可使用 Matplotlib 3.11.1 运行 `python scripts/render_report_figures.py`；如无默认黑体，可用 `--cjk-font /字体绝对路径.ttf` 指定中文字体。分配图读取仓库中的基准汇总数据，PDF 图表为矢量文件。

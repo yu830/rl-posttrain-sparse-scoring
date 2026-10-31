@@ -1,4 +1,4 @@
-% Compile from the repository root with XeLaTeX/BibTeX or the report build script.
+% Build from the repository root using scripts/build_experimental_report.sh.
 \documentclass[11pt,a4paper]{article}
 \usepackage{fontspec}
 \IfFileExists{/mnt/c/Windows/Fonts/times.ttf}{
@@ -7,88 +7,107 @@
 \setsansfont{Latin Modern Sans}
 \setmonofont{Latin Modern Mono}
 \tracinglostchars=3
-\usepackage[a4paper,margin=23mm,headheight=15pt]{geometry}
+\usepackage[a4paper,top=23mm,bottom=23mm,left=24mm,right=24mm,headheight=15pt]{geometry}
 \usepackage{amsmath,amssymb,booktabs,tabularx,array,graphicx,xcolor,enumitem,fancyhdr}
 \usepackage[numbers,sort&compress]{natbib}
 \usepackage[unicode,hidelinks,breaklinks]{hyperref}
 \usepackage{xurl}
-\definecolor{navy}{HTML}{163B63}
-\definecolor{slate}{HTML}{596675}
+\definecolor{ink}{HTML}{1C1C1C}
+\definecolor{secondary}{HTML}{505050}
 \setlength{\parindent}{0pt}
-\setlength{\parskip}{0.5em}
+\setlength{\parskip}{0.43em}
 \setlength{\emergencystretch}{3em}
 \setlist{nosep,leftmargin=1.5em}
-\renewcommand{\arraystretch}{1.2}
+\renewcommand{\arraystretch}{1.17}
+\setcounter{tocdepth}{2}
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
 \newcommand{\code}[1]{{\small\nolinkurl{#1}}}
+\newcommand{\figurecaption}[1]{\refstepcounter{figure}{\small\textbf{\figurename~\thefigure.} #1\par}}
+\newcommand{\tablecaption}[1]{\refstepcounter{table}{\small\textbf{\tablename~\thetable.} #1\par}}
 \pagestyle{fancy}\fancyhf{}
-\fancyhead[L]{\small\color{slate} Memory-Bounded Teacher Scoring}
-\fancyhead[R]{\small\color{slate} TECHNICAL REPORT}
+\fancyhead[L]{\small\color{secondary} Memory-Bounded Teacher Scoring}
+\fancyhead[R]{\small\color{secondary} Jiacheng Yu}
 \fancyfoot[C]{\thepage}
 
-\hypersetup{pdftitle={Memory-Bounded Teacher Scoring},pdfauthor={Jiacheng Yu},pdfsubject={Contract-preserving teacher scoring on FSDP2}}
+\hypersetup{pdftitle={Memory-Bounded Teacher Scoring},pdfauthor={Jiacheng Yu},pdfsubject={FSDP2 readout optimization and validation}}
 \begin{document}
 \hypersetup{pageanchor=false}
 \begin{titlepage}
-\vspace*{13mm}{\small\sffamily\bfseries\color{navy} AI INFRASTRUCTURE / TECHNICAL REPORT}\par
-\vspace{15mm}{\LARGE\bfseries Memory-Bounded\\[2mm]Teacher Scoring\par}
-\vspace{6mm}{\large A contract-preserving readout for a verl FSDP2 Worker\par}
-\vspace{9mm}\hrule\vspace{7mm}
-{\large\bfseries 81.05\% lower peak allocated}\par
-\vspace{1mm}At 8,192 projected rows, the complete Worker call used 3,596.6 MiB with dense readout and 681.6 MiB with row chunking. All 262,144 candidate logprobs and 8,192 ordered Teacher Top-$K$ rows matched the dense reference exactly.
-
-\vspace{6mm}\begin{tabularx}{\linewidth}{@{}p{35mm}Y@{}}
+\thispagestyle{empty}
+\vspace*{9mm}
+\noindent{\small\sffamily\bfseries TECHNICAL REPORT}\hfill{\small 31 OCTOBER 2026}\par
+\vspace{3mm}\hrule height 1pt
+\vspace{22mm}
+{\fontsize{28}{35}\selectfont\bfseries Memory-Bounded\\[1mm]Teacher Scoring\par}
+\vspace{7mm}
+{\large FSDP2 readout optimization and validation\par}
+\vspace{17mm}
+\begin{tabularx}{\linewidth}{@{}p{34mm}Y@{}}
 Author & Jiacheng Yu\\
-Edition & 31 October 2026; English\\
-Evaluated system & Qwen2.5-0.5B-Instruct, BF16, one GPU, FSDP2 CPU offload\\
-Readout & $K=32$, 256 rows per chunk, allocator fraction 0.50\\
-Evaluation baseline & \code{ad395e94923bcf65fff4bc1eeb2e0e1505fd4f91}\\
+System & Qwen2.5-0.5B-Instruct, BF16, one GPU\\
+Execution & verl Teacher Worker, FSDP2 with CPU offload\\
 \end{tabularx}
-\vfill{\small The percentage is the PyTorch allocator's peak allocated during a complete Worker call, not a whole-device VRAM reduction.}\par
+\vfill
+\hrule\vspace{5mm}
+{\small\textbf{Principal result.} At 8,192 projected rows, peak allocated during the Worker call decreased from 3,596.6 to 681.6 MiB, while candidate logprobs and ordered Teacher Top-$K$ matched the dense reference. The allocation measurement is scoped to the PyTorch allocator.}\par
+\vspace{6mm}
 \end{titlepage}
 \hypersetup{pageanchor=true}
 
-\section*{Executive summary}
-A teacher can return a compact set of scores while still materializing logits for every projected row and every vocabulary entry. This project moves row chunking ahead of the Qwen2 LM head inside the normal FSDP2 forward. Each tile produces full-vocabulary-normalized scores at Student candidate IDs and the Teacher's ordered Top-$K$; only compact outputs are retained. The adapter is opt-in and preserves the tied head, module hooks and output layout of the pinned verl Worker.\cite{verl6920pinned}
+\section*{Abstract}
+Teacher scoring can return compact outputs while first materializing a much larger row-by-vocabulary logits tensor. This project integrates a row-chunked LM-head readout into a pinned verl \code{TeacherFSDPWorker}. It preserves full-vocabulary-normalized log probabilities at Student candidate IDs and the Teacher's ordered Top-$K$, while entering through the normal FSDP2 forward and retaining tied weights and module hooks.
 
-On an RTX 5070 Laptop GPU, the $N=8192$ experiment reduced PyTorch peak allocated by 81.05\% under the stated allocator fraction. A separate direct Worker-to-Student fixture matched the pinned reverse-KL loss, checked gradients and one restricted final-RMSNorm update. GitHub's CPU regression workflow passed 171 tests, with two full Trainer-runtime parity tests deselected. The result is a single-GPU experimental execution-path optimization; the time measurements are descriptive and do not establish a general speedup.
-
-\section{The engineering problem}
-Let $N$ be the number of projected model rows, $V$ the vocabulary size and $K$ the number of requested candidates per row. A dense head first creates $N\times V$ logits, although the response contains only $O(NK)$ values and IDs. Candidate-only normalization would change the contract: the consumer needs candidate logprobs normalized over the full vocabulary as well as the Teacher's own Top-$K$.
-
-Row chunking is an established technique; the contribution here is its integration with a real Worker and its scoring and consumer interfaces. Related selected-logit implementations and per-row scoring interfaces are prior work.\cite{indexedlogits,sglang38119}
-
+For Qwen2.5-0.5B-Instruct in BF16 on one RTX 5070 Laptop GPU, with $K=32$, 256-row chunks, CPU offload and allocator fraction 0.50, the $N=8192$ Worker comparison reduced peak allocated by 81.05\%. All 262,144 candidate scores and 8,192 ordered Top-$K$ rows matched exactly. A separate direct Worker-to-Student fixture matched the pinned loss, checked gradients and one restricted RMSNorm update. The result is a single-GPU experimental optimization; the measured timings are descriptive.
+\tableofcontents
 \clearpage
-\section{System overview}
-\begin{center}
-\includegraphics[width=0.98\linewidth,height=0.72\textheight,keepaspectratio]{docs/architecture/system-overview.en.png}
-\end{center}
-{\small\color{slate} Figure 1. Dense and row-chunked readout paths share the Teacher execution and compact-output contract. The last stage depicts a separate validation fixture.}
 
-\clearpage
-\section{Method and implementation}
-\subsection{The scoring contract}
-For hidden row $h_t$, LM-head weights $W$, bias $b$ and candidate $i$, the returned score is
+\section{Problem and scoring contract}
+Let $N$ be the number of projected model rows, $V$ the vocabulary size and $K$ the candidate width. A dense language-model head can allocate $N\times V$ logits even when the response contains only $O(NK)$ values and IDs. Reducing the response alone therefore does not bound the intermediate readout allocation.
+
+For hidden row $h_t$, head weights $W$, bias $b$ and candidate $i$, the required full-vocabulary-normalized score is
 \begin{equation}
 z_{t,i}=h_t^{\mathsf T}W_i+b_i,\qquad
-\log p_{t,i}=z_{t,i}-\log\!\sum_{j\in\mathcal V} e^{z_{t,j}}.
+\log p_{t,i}=z_{t,i}-\log\!\sum_{j\in\mathcal V}e^{z_{t,j}}.
 \end{equation}
-The normalizer ranges over the full vocabulary. Candidate IDs are ordered and may repeat; the returned values retain that order. The Worker also returns Teacher Top-$K$ IDs over the full vocabulary, with nested offsets and valid-row order preserved.
+The denominator covers the entire vocabulary. The Worker also returns the Teacher's own ordered Top-$K$ IDs, so projecting only Student candidate logits cannot reproduce the complete interface in general. Candidate IDs can repeat; their order and multiplicity, valid-row order and nested offsets are part of the output contract.
 
-\subsection{Bounded readout inside FSDP2}
-The adapter is installed before FSDP wrapping, retaining parameter objects and the tied input/output weight. A request enters through the normal outer FSDP module call. The backbone runs once; its hidden rows are then passed through the LM head as a module in tiles of at most $B$ rows. For each tile, logits are promoted to FP32 for log-sum-exp and candidate gather, and Teacher Top-$K$ IDs are retained. Tiles are discarded without assembling a full $N\times V$ result.
+Row chunking and selected-logit primitives are established techniques. The engineering contribution here is their integration with the fixed Worker, FSDP lifecycle and downstream scoring contract.\cite{verl6920pinned,indexedlogits,sglang38119}
 
-The live logits tile scales with $B V$ instead of $N V$; compact outputs still scale with $NK$, and backbone, model and FSDP allocations remain. This changes allocation behavior rather than eliminating the full-vocabulary projection work. When an unbudgeted tile covers all rows, the implementation uses the native dense forward; an explicit readout budget is an estimate for that portion of the computation, not a whole-device limit.
+\section{System architecture}
+The adapter is opt-in. Dense and chunked paths enter the same Worker and return the same compact outputs; the last stage in Figure~\ref{fig:system} is a separate consumer-validation fixture.
+\begin{center}\begin{minipage}{0.94\linewidth}\centering
+\includegraphics[width=\linewidth]{docs/figures/report-system.en.pdf}
+\figurecaption{Teacher scoring paths and the restricted Worker-to-Student validation.}\label{fig:system}
+\end{minipage}\end{center}
+
+\section{Implementation}
+\subsection{FSDP and the LM-head lifecycle}
+The adapter is installed before wrapping the ordinary \code{Qwen2ForCausalLM}; it retains the parameter objects and the tied input/output weight. A request enters the normal outer FSDP module call. The backbone and final normalization run once, and the resulting hidden rows are passed through \code{lm_head} as a module, in tiles. This preserves the head's pre- and post-hooks as well as the outer FSDP forward boundary.
+
+For each tile, logits are promoted to FP32 for log-sum-exp and candidate gather; the selected scores are cast back to the logits dtype and the Teacher Top-$K$ IDs are retained. The tile is discarded before the next one. The live logits tile therefore scales with $BV$ rather than $NV$ for $B<N$; compact outputs still scale with $NK$, and the model, backbone and FSDP allocations remain. Full-vocabulary projection work is not eliminated.
+
+\subsection{Chunk selection and dense fallback}
+An optional head budget selects the tile size before the forward. If $s$ is the logits element size in bytes, $H$ the requested readout budget, and $B_{\mathrm{requested}}$ the requested row cap (or $N$ if omitted), the implementation's estimate is
+\begin{align}
+M_c &= NK(s+8), & m_r &= \left\lceil1.25\,[V(s+8)+24K]\right\rceil,\\
+B &= \min\!\left(N,B_{\mathrm{requested}},\left\lfloor\frac{H-M_c}{m_r}\right\rfloor\right).
+\end{align}
+The estimate includes compact outputs, a logits tile, FP32 work tensors and Top-$K$ bookkeeping; it does not bound all model allocations, backend workspaces or fragmentation. If no explicit budget is set and the selected tile covers all rows, the integration uses the native dense forward. An explicit budget does not silently select that fallback.
 
 \subsection{Padding and consumer alignment}
-Candidate IDs are scattered into padded model rows with the prepared attention mask, then compact outputs are restored to valid-row order. The adapter does not add a causal shift to candidate IDs. The consumer fixture applies the response mask at the appropriate prediction positions and passes the actual Worker outputs to the pinned loss.
+Candidate IDs are scattered into padded model rows using the prepared attention mask, and returned valid rows are restored in their original order. The adapter does not add a causal shift to those IDs. In the consumer check, the response mask is aligned to prediction positions before aggregate loss and diagnostic calculations.
 
-\clearpage
-\section{Evaluation}
-\subsection{Setup}
-The final matrix used Qwen2.5-0.5B-Instruct in BF16 on one RTX 5070 Laptop GPU, PyTorch 2.14.1+cu130, FSDP2 with CPU offload, SDPA, $K=32$, $B=256$ and allocator fraction 0.50. Inputs and candidate IDs were synthetic. For each length, four fresh processes ran Dense--Chunked--Chunked--Dense; each process performed one warmup and five measured calls. $N$ denotes projected rows.
+\section{Experimental setup}
+The final comparison used Qwen2.5-0.5B-Instruct, BF16 and SDPA on one RTX 5070 Laptop GPU, with PyTorch 2.14.1+cu130, FSDP2 CPU offload, $K=32$, $B=256$ and PyTorch allocator fraction 0.50. Text and candidate IDs were synthetic. For each length, four fresh processes ran in Dense--Chunked--Chunked--Dense order. Each process had one warmup and five measured calls; each p50/p95 below summarizes ten calls per mode.
 
-\begin{center}\small
+All 96 saved compact outputs from the final matrix and the chunk-size sweep were reopened and compared against same-length Dense references. At $N=8192$, all 262,144 candidate logprobs and all 8,192 ordered Teacher Top-$K$ rows matched exactly; the comparison also checked output identity, shapes and offsets.
+
+\section{Results}
+\subsection{Allocator peaks and capacity}
+Table~\ref{tab:matrix} records per-call PyTorch peaks and synchronized Worker spans. At $N=8192$, peak allocated fell from 3,596.6 MiB to 681.6 MiB, a reduction of 81.05\%. Reserved peaks are reported separately. The measurement is not a whole-device VRAM reduction.
+
+\begin{center}\begin{minipage}{0.94\linewidth}\centering\small
+\tablecaption{Worker-call allocator peaks and warm elapsed time.}\label{tab:matrix}\vspace{2mm}
 \begin{tabular}{@{}rlrrrr@{}}\toprule
 $N$ & Mode & Alloc. MiB & Reserved MiB & p50 ms & p95 ms\\\midrule
 1024 & Dense & 1517.1 & 2644 & 210.4 & 288.0\\
@@ -97,41 +116,47 @@ $N$ & Mode & Alloc. MiB & Reserved MiB & p50 ms & p95 ms\\\midrule
 4096 & Chunked & 672.3 & 1130 & 318.8 & 327.5\\
 8192 & Dense & 3596.6 & 3846 & 570.8 & 599.6\\
 8192 & Chunked & 681.6 & 1126 & 626.3 & 944.6\\\bottomrule
-\end{tabular}\par\vspace{2mm}
-\end{center}
-{\small\color{slate} Table 1. Per-call PyTorch allocator peaks and synchronized warm Worker spans. Each p50/p95 is computed over ten measured calls.}
-\begin{center}\includegraphics[width=\linewidth]{docs/figures/worker-summary.png}\end{center}
-{\small\color{slate} Figure 2. Peak allocated and the p50-to-p95 span; reserved memory is shown in Table 1.}
+\end{tabular}
+\end{minipage}\end{center}
 
-\clearpage
-\section{Correctness and interpretation}
-At $N=8192$, all 262,144 candidate logprobs and all 8,192 ordered Teacher Top-$K$ rows matched the Dense reference exactly. Across the final matrix and chunk-size sweep, 96 saved compact outputs were reloaded and compared against same-length Dense references. The comparison includes output identity, shape and offsets.
+\begin{center}\begin{minipage}{0.94\linewidth}\centering
+\includegraphics[width=\linewidth]{docs/figures/report-memory.en.pdf}
+\figurecaption{Peak allocated for the Table~\ref{tab:matrix} conditions; bar labels are rounded to the nearest MiB.}\label{fig:memory}
+\end{minipage}\end{center}
 
-The $N=8192$ peak-allocated decrease from 3,596.6 to 681.6 MiB is 81.05\%. It is a per-call PyTorch allocator measurement, not an estimate of total device VRAM. Under the same fraction, Dense succeeded at 8,704 rows and ran out of allocator memory at 9,216; Chunked ran at 32,768, the largest tested point. A same-length Dense correctness reference was not available for 32,768.
+At fraction 0.50, Dense succeeded at 8,704 rows and reached allocator OOM at 9,216; Chunked ran at 32,768, the largest tested point. These are tested points rather than exact capacity limits, and the 32,768-row run has no same-length Dense correctness reference.
 
-The synchronized timings include diagnostic hooks and return of nested outputs to CPU. At 8,192 rows, Dense p50/p95 was 570.8/599.6 ms and Chunked was 626.3/944.6 ms. Process variation and host-clock differences limit interpretation; these measurements do not establish a general latency improvement.
+\subsection{Timing interpretation}
+The synchronized spans include diagnostic hooks and nested-output return to CPU. At 8,192 rows, Dense p50/p95 was 570.8/599.6 ms and Chunked was 626.3/944.6 ms. The small sample showed process variation and host-clock differences, so it does not establish a general latency improvement.
 
-\subsection{Worker-to-Student validation}
-In a separate two-sequence fixture, actual Dense and Chunked Worker outputs fed the pinned reverse-KL consumer. The loss, Student logits gradients, final RMSNorm gradients and one restricted AdamW update matched. The fixture used $K=8$, 25 active response-prediction rows and updates only the Student's final RMSNorm weight. An earlier scalar-loss match concealed gradient differences; aligning the conversion graph with the pinned consumer removed those differences in the recorded fixture. This is a direct integration check, not a full RL training run.
+\section{Worker-to-Student validation}
+In a separate two-sequence fixture, actual Dense and Chunked Worker outputs were passed directly to the pinned reverse-KL consumer. The fixture used $K=8$, 25 active response-prediction rows and one AdamW update restricted to the Student's final RMSNorm weight. Table~\ref{tab:student} shows selected observations; the checked Student-logits gradients and final RMSNorm gradients also matched exactly.
+
+\begin{center}\begin{minipage}{0.94\linewidth}\centering\small
+\tablecaption{Direct Worker-to-Student fixture.}\label{tab:student}\vspace{2mm}
+\begin{tabularx}{\linewidth}{@{}Yrr@{}}\toprule
+Quantity & Dense & Chunked\\\midrule
+Masked scalar loss & 0.0216006283 & 0.0216006283\\
+Final RMSNorm gradient L2 & 0.0124774044 & 0.0124774044\\
+Changed BF16 parameter values & 1 & 1\\\bottomrule
+\end{tabularx}
+\end{minipage}\end{center}
+
+An earlier consumer implementation matched the scalar loss but differed in the checked gradients. Reusing the FP32 conversion as in the pinned consumer removed that difference in the recorded fixture. This illustrates why the validation compares gradients and the update as well as the scalar loss.
 
 \section{Current scope and future work}
-The evaluated path covers tied-head Qwen2 on one GPU with FSDP2. The next stage is to extend model coverage, support packed variable-length inputs, validate FSDP1 and multi-GPU/tensor-parallel execution, and integrate an end-to-end RL trainer. The initial selected-logit-only fusion proposal remains NO-GO for the complete scoring contract; historical negative findings remain in the project results.
+The measured path covers a tied-head Qwen2 model on one GPU with FSDP2; the consumer experiment is a restricted update. Future work includes packed variable-length inputs, broader model coverage, FSDP1 and multi-GPU/tensor-parallel validation, and end-to-end RL Trainer integration. The earlier selected-logit-only fusion proposal remains NO-GO for the complete Teacher contract; its negative findings remain in the historical results.
 
-\clearpage
-\section{Reproducibility and evidence}
-The evaluated code baseline is \code{ad395e94923bcf65fff4bc1eeb2e0e1505fd4f91}; the Worker integration targets verl \code{87cd055e872f9fdd7b976fcd797a0934b6dba265}, and the model revision is \code{7ae557604adf67be50417f59c2c2f167def9a775}. The dedicated Linux/Python 3.12 Worker lock fixes 105 dependencies. The repository's reproduction guide specifies the setup, model hashes, commands and experiment boundaries.
+\section{Reproducibility}
+The evaluated scoring baseline is \href{https://github.com/yu830/rl-posttrain-sparse-scoring/commit/ad395e94923bcf65fff4bc1eeb2e0e1505fd4f91}{\code{ad395e9}}. The Worker patch targets verl \code{87cd055e872f9fdd7b976fcd797a0934b6dba265}; the pinned Qwen model revision is \code{7ae557604adf67be50417f59c2c2f167def9a775}. The dedicated Linux/Python 3.12 Worker lock fixes 105 dependencies. The \href{https://github.com/yu830/rl-posttrain-sparse-scoring/blob/main/docs/experimental-reproduction.md}{reproduction guide} supplies the environment, model hashes and commands; the \href{https://github.com/yu830/rl-posttrain-sparse-scoring/blob/main/results/worker-evidence-manifest.json}{evidence manifest} binds archived measurements by SHA-256.
 
-The public results summary contains the matrix values, and the evidence manifest binds archived measurements to SHA-256 hashes. The GitHub CPU job ran at the baseline revision and reported 171 passed, 2 deselected and no skipped tests; it checks CPU regressions and patch applicability rather than running the GPU benchmark.
-
-\begin{itemize}
-\item \href{https://github.com/yu830/rl-posttrain-sparse-scoring/blob/main/docs/experimental-reproduction.md}{Experimental reproduction guide}
-\item \href{https://github.com/yu830/rl-posttrain-sparse-scoring/blob/main/results/worker-benchmark-summary.json}{Worker benchmark summary} and \href{https://github.com/yu830/rl-posttrain-sparse-scoring/blob/main/results/worker-evidence-manifest.json}{evidence manifest}
-\item \href{https://github.com/yu830/rl-posttrain-sparse-scoring/actions/runs/41056928510}{GitHub Actions CPU run}
-\end{itemize}
+The \href{https://github.com/yu830/rl-posttrain-sparse-scoring/actions/runs/41170230693}{GitHub CPU regression run} at presentation revision \code{c0f019e} reported 171 passed, two deselected and no skipped tests. It checks CPU regressions and patch applicability; GPU Worker measurements are a separate experiment.
 
 \section{Conclusion}
-Moving the row boundary ahead of the LM head gives this Teacher Worker a smaller live readout allocation while preserving the outputs required by its consumer. The measured single-GPU result, exact output comparisons and restricted Student update provide a concrete basis for the next integration stage.
+Moving the row boundary ahead of the LM head reduces the live readout allocation while preserving the compact scoring outputs. The measured single-GPU result, exact output comparisons and restricted Student update provide a concrete basis for further integration.
 
+\begingroup\small\setlength{\bibsep}{0pt}
 \bibliographystyle{plainnat}
 \bibliography{docs/reports/references}
+\endgroup
 \end{document}
