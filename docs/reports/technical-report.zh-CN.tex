@@ -1,26 +1,28 @@
 % XeLaTeX + BibTeX。数学表达式与英文版共用。
 \documentclass[11pt,a4paper]{article}
 \usepackage{fontspec}
-\setmainfont{cjk.ttf}[Path=build/,AutoFakeBold=2,AutoFakeSlant=0.2]
-\setsansfont{cjk.ttf}[Path=build/,AutoFakeBold=2,AutoFakeSlant=0.2]
+\setmainfont{Latin Modern Roman}
+\setsansfont{Latin Modern Sans}
 \setmonofont{Latin Modern Mono}
-\XeTeXlinebreaklocale "zh"
-\XeTeXlinebreakskip=0pt plus 1pt
+\usepackage{xeCJK}
+\setCJKmainfont{cjk.ttf}[Path=build/,AutoFakeBold=2,AutoFakeSlant=0.2]
+\setCJKsansfont{cjk.ttf}[Path=build/,AutoFakeBold=2,AutoFakeSlant=0.2]
 \tracinglostchars=3
 \usepackage[a4paper,margin=23mm,headheight=15pt]{geometry}
 \usepackage{amsmath,amssymb,mathtools,booktabs,tabularx,array,graphicx,xcolor,enumitem,fancyhdr}
 \usepackage[numbers,sort&compress]{natbib}
 \usepackage[unicode,hidelinks,breaklinks]{hyperref}
 \usepackage{xurl}
-\hypersetup{pdftitle={候选集条件教师评分：系统研究报告},pdfauthor={Jiacheng Yu},pdfsubject={Research draft; no project performance results}}
+\hypersetup{pdftitle={候选集条件教师评分：系统研究报告},pdfauthor={Jiacheng Yu},pdfsubject={Historical teacher scoring source survey}}
 \setlength{\parindent}{0pt}\setlength{\parskip}{0.45em}\setlength{\emergencystretch}{3em}
 \setlist{nosep,leftmargin=1.5em}\renewcommand{\arraystretch}{1.16}
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
 \newcommand{\code}[1]{{\small\nolinkurl{#1}}}
-\pagestyle{fancy}\fancyhf{}\fancyhead[L]{\small 教师评分 / 研究报告}\fancyhead[R]{\small 研究草稿}\fancyfoot[C]{\thepage}
+\pagestyle{fancy}\fancyhf{}\fancyhead[L]{\small 教师评分 / 研究报告}\fancyhead[R]{\small 历史研究}\fancyfoot[C]{\thepage}
 \renewcommand{\contentsname}{目录}\renewcommand{\refname}{参考文献}\renewcommand{\figurename}{图}
 \input{docs/reports/common-equations.tex}
 \begin{document}
+\hypersetup{pageanchor=false}
 \begin{titlepage}
 \vspace*{11mm}{\small\sffamily\bfseries AI 基础设施 / 技术报告}\par
 \vspace{14mm}{\LARGE\bfseries 候选集条件\\[2mm]教师评分\par}
@@ -29,15 +31,14 @@
 \begin{tabularx}{\linewidth}{@{}p{40mm}Y@{}}
 作者 & Jiacheng Yu\\
 版本 & 2026 年 10 月 29 日；简体中文\\
-文稿状态 & 作者已审核 c1ab1f4 版报告；AI 辅助\\
-研究状态 & 技术假设仍待核实；项目优化尚未实现\\
-测量状态 & 已审核快照中，CPU 数值、梯度、GPU、HTTP 及训练实验尚未执行\\
+测量状态 & 历史快照中，CPU 数值、梯度、GPU、HTTP 及训练实验尚未执行\\
 \end{tabularx}
-\par\vspace{10mm}\noindent\textbf{范围。} 本报告研究教师推理中逐位置候选评分的一种可能契约，记录上游行为及数学边界；它不构成已测得的加速或新内核声明。实验状态以已审核的 c1ab1f4 快照为准；后续结果另行记录。
+\par\vspace{10mm}\noindent\textbf{范围。} 本报告研究教师推理中逐位置候选评分的一种可能契约，记录上游行为及数学边界；它不构成已测得的加速或新内核声明。实验状态以c1ab1f4 历史快照为准；后续结果另行记录。
 \vfill{\small 代码观察对应固定的上游版本。第三方结果不作为本项目测量值。}
 \end{titlepage}
+\hypersetup{pageanchor=true}
 \section*{摘要}
-后训练消费者可能需要在不同因果位置请求不同候选 token 的教师分数。紧凑的候选条件路径是否有价值，取决于消费者的具体损失、已有 API 语义、因果对齐及端到端开销。SGLang 已有逐项评分和位置选择；一个针对特定分支的开放拉取请求实现了逐位置 ID，但仍使用全词表归一化。vLLM 已合并逐行接口，IndexedLogits 已提供候选 logits 计算原语。条件反向 KL 并非全词表 KL；所核查的 Rethinking OPD 实现也不能直接以仅条件化的分数替换。这些发现缩小了潜在贡献范围，但尚未证明贡献成立。已审核快照中，本项目没有数值、GPU、服务或训练结果。
+后训练消费者可能需要在不同因果位置请求不同候选 token 的教师分数。紧凑的候选条件路径是否有价值，取决于消费者的具体损失、已有 API 语义、因果对齐及端到端开销。SGLang 已有逐项评分和位置选择；一个针对特定分支的开放拉取请求实现了逐位置 ID，但仍使用全词表归一化。vLLM 已合并逐行接口，IndexedLogits 已提供候选 logits 计算原语。条件反向 KL 并非全词表 KL；所核查的 Rethinking OPD 实现也不能直接以仅条件化的分数替换。这些发现缩小了潜在贡献范围，但尚未证明贡献成立。历史快照中，本项目没有数值、GPU、服务或训练结果。
 \tableofcontents\clearpage
 \section{问题与研究边界}
 在线策略蒸馏（On-Policy Distillation，OPD）可能需要教师评估学生轨迹。采样 token 目标、教师 Top-$k$ 损失和学生 Top-$k$ 条件目标要求不同输出。verl 中关于学生 Top-$k$ 重归一化反向 KL 的需求是具体信号，但不代表所有训练系统都需要这一契约。\cite{verl6676,verlteacher,verlloss}
@@ -70,7 +71,7 @@ Rethinking OPD 研究学生 Top-$k$ 行为；Sparse Logit Sampling 研究另一�
 \section{消费者与因果对齐}
 在 Rethinking OPD 作者代码版本 \code{ac26e38d6f1572eb027597b48a9f4e01f6915ef8} 中，所核查路径使用全词表归一化的学生及教师 logprob 构造 log-ratio 奖励，对支持集权重归一化，再通过 PPO surrogate 使用停止梯度的优势。仅条件化的教师输出会改变该奖励，不能保持损失等价。此观察针对当前核查代码，不证明论文历史图表的代码来源。\cite{opdauthorcode,rethinking2026}
 
-实际集成必须说明哪个策略产生 $C_t$、候选何时可用、分词器和模型版本以及 next-token 位移。记录 rollout 支持集、学生预计算和调整执行顺序分别有不同的陈旧性与成本。已审核快照中尚未确认真正消费所提直接条件反向 KL 的训练端。
+实际集成必须说明哪个策略产生 $C_t$、候选何时可用、分词器和模型版本以及 next-token 位移。记录 rollout 支持集、学生预计算和调整执行顺序分别有不同的陈旧性与成本。历史快照中尚未确认真正消费所提直接条件反向 KL 的训练端。
 \section{架构与可能变更}
 图~\ref{fig:arch} 区分上游已有操作、拟议组件和已有先例。候选分支将在稠密 LM Head 投影前介入，并提供显式条件输出契约。稠密参考和候选实现必须在位置、有序 ID、掩码、归一化、模型变换和错误行为上保持一致；全词表归一化路径仍是不同语义。
 \begin{figure}[htbp]\centering
@@ -84,17 +85,18 @@ FLOP 比例不能直接预测延迟：稠密矩阵乘法可高效复用权重，
 
 \textbf{仅为解析示例。} 当 $R=128$、$d=1024$、$V=131072$、$K=32$，每元素两字节时，输出头权重占 256 MiB、稠密 logits 占 32 MiB、eager gathered-weight 张量占 8 MiB、候选 logits 占 8 KiB。这些只是张量大小恒等式，不是实测 GPU 峰值显存。假设 $f=0.1$，即使完全消除该部分，整体请求加速上限也只有 $1/0.9$；实际 $f$ 未知。
 \section{评估设计}
-在已审核快照中，以下实验均为拟议方案，\textbf{尚未执行}。原生全归一化路径只作为背景；针对相同条件契约比较稠密投影加 gather、分块稠密、eager 索引 gather，以及兼容时的已有 IndexedLogits 实现。未来候选方案应在相关工作负载上胜过正确的强基线，而不是只胜过最慢基线。
+在历史快照中，以下实验均为拟议方案，\textbf{尚未执行}。原生全归一化路径只作为背景；针对相同条件契约比较稠密投影加 gather、分块稠密、eager 索引 gather，以及兼容时的已有 IndexedLogits 实现。未来候选方案应在相关工作负载上胜过正确的强基线，而不是只胜过最慢基线。
 
 先用 CPU FP64 参考检查 logits、归一化、损失和学生梯度。覆盖 $K=1$、$K=V$、候选排列、非法或重复 ID、变长行、掩码、未选 logits 变化和因果偏移一位的情况。在比较实现前确定容差与量化输入；教师值必须停止梯度。不支持的 LoRA、量化或张量并行模式须明确拒绝，或采用保持语义且纳入测量的回退路径。
 
 性能测量需冻结硬件、驱动、框架、模型与分词器版本、轨迹、数据类型、掩码、批处理和计时边界。覆盖候选重叠高低、代表性行数与 prompt 长度、可行并发以及 OOM/回退情况。先建立稳定 A/A 对照，再随机化成对 A/B；保留失败和负结果。分别测量内核及完整 HTTP 请求延迟，包括 p50/p95、吞吐、显存、负载字节数和错误率。分析器应与主要计时分开。仅教师轨迹回放不等于完整训练运行。
 \section{限制与判断标准}
-已审核快照中，实际消费者以及相对于上述 API 和内核是否仍有缺口均未解决。本项目尚未执行 CPU 数值、梯度、GPU、HTTP 或真实训练实验。当时没有项目加速、显存节省、训练质量收益或原创候选 logits 原语的证据。只有具体消费者、固定语义和相对已有路径的可复现比较共同成立时，剩余缺口才可信；条件不满足时应记录无结论或负结果。
+历史快照中，实际消费者以及相对于上述 API 和内核是否仍有缺口均未解决。本项目尚未执行 CPU 数值、梯度、GPU、HTTP 或真实训练实验。当时没有项目加速、显存节省、训练质量收益或原创候选 logits 原语的证据。只有具体消费者、固定语义和相对已有路径的可复现比较共同成立时，剩余缺口才可信；条件不满足时应记录无结论或负结果。
 
-作者已审核仓库版本 \code{c1ab1f4308c2ac1aecf47e222f210a16d0a5a898} 的两份报告；AI 辅助了初稿撰写。后续实质性技术修订须由作者重新审核。源码调查限于所引用快照，并非穷尽式新颖性检索。上游源码和论文归原作者；此处未打包第三方实现。核查范围内 IndexedLogits 仓库未声明许可证，后续复用须另行分析授权。
+源码调查限于所引用快照，并非穷尽式新颖性检索。上游源码和论文归原作者；此处未打包第三方实现。核查范围内 IndexedLogits 仓库未声明许可证，后续复用须另行分析授权。
 \section{文档复现}
 在仓库根目录安装 XeLaTeX、BibTeX、Poppler、Python 和 Pillow，并按 README 使用随附字体子集后，运行 \code{bash scripts/build_assets.sh} 和 \code{python3 scripts/verify_assets.py}。这些命令只重建文档资产，不运行 SGLang，也不测试研究假设。
+\setlength{\bibsep}{0pt}
 \bibliographystyle{plainnat}
 \bibliography{docs/reports/references}
 \end{document}

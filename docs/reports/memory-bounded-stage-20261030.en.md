@@ -3,10 +3,8 @@ title: Memory-Bounded Teacher Scoring
 subtitle: Controlled stability, allocator-bounded capacity and direct Worker-to-Student validation
 author: Jiacheng Yu
 edition: 30 October 2026 | English
-status: AI-assisted engineering draft; new results pending Human review
-footer: Draft - Human review pending
+footer: Engineering supplement
 scope: Single-GPU Qwen2.5-0.5B experiments on an RTX 5070 Laptop, with fixed verl source and explicitly bounded correctness claims.
-history: The previously reviewed c1ab1f4 report editions remain unchanged. This supplement is a new draft and does not inherit their author-review status.
 ---
 ## 1. Question and execution contract
 
@@ -198,5 +196,3 @@ Evidence identifiers are `S1_SUMMARY.json`, `capacity_runner.jsonl`, `compare_va
 - [verl PR #6920, fixed source](https://github.com/verl-project/verl/tree/87cd055e872f9fdd7b976fcd797a0934b6dba265).
 - [Pinned FSDP reverse-KL loss](https://github.com/verl-project/verl/blob/87cd055e872f9fdd7b976fcd797a0934b6dba265/verl/trainer/distillation/fsdp/losses.py), Git blob `97d3ebf485a5ce9e1b1a435cce427d6d89284dc6`.
 - [Qwen2.5-0.5B-Instruct model snapshot](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct/tree/7ae557604adf67be50417f59c2c2f167def9a775).
-
-New experimental text in this supplement is awaiting Human review. The older c1ab1f4 report editions and their review status are preserved separately.

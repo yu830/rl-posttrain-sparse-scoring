@@ -1,7 +1,5 @@
 # 显存预算约束的 Teacher Scoring
 
-> 10 月 30 日新增内容为 AI 辅助草稿，等待 Human 审核；此前已审核报告仍保留为独立快照。
-
 这条实验路径把行分块前移到 LM Head 之前，同时保留学生候选 ID 上的全词表归一化教师 logprob 和教师自己的 Top-K ID。目标是开放的 [verl #6920](https://github.com/verl-project/verl/pull/6920) 固定提交 `87cd055e872f9fdd7b976fcd797a0934b6dba265` 中的冻结 Teacher。补丁需要显式启用，尚未合入上游；行分块本身已有先例。
 
 适配器在 FSDP 包装前安装。普通模型入口执行 backbone 与最终 norm，然后用原 LM Head 逐块投影；块小于总行数时不拼接完整 logits。Worker 维持原 nested offsets 和两个字段的 CPU 输出。无预算且一个块覆盖所有行时，集成路径改用原生 dense forward，并在 FSDP 返回后归约。
@@ -24,7 +22,7 @@
 
 独立审查发现设备采样失败时的退出状态缺口；probe 已改为保留 Worker 结果并将观测不完整标为失败。本轮十个完成的 Worker 进程的 sampler failure 均为 `null`，实际测量源码快照单独保留。开始时两次预检查因资源门不足为 NOT_RUN；一次 CPU 导入顺序错误在 GPU 执行前修正。
 
-[实验复现说明](experimental-reproduction.md)列出命令、环境与测试边界。[中文 LaTeX 报告](reports/memory-bounded-experimental.zh-CN.pdf)及可编辑源仍待 Human 审核。
+[实验复现说明](experimental-reproduction.md)列出命令、环境与测试边界。[中文技术报告](reports/memory-bounded-experimental.zh-CN.pdf)介绍最终 Worker 对照。
 
 ## 10 月 30 日补充：稳定性、容量与消费链
 
@@ -105,14 +103,14 @@ python scripts/full_teacher_benchmark.py --model-dir "$MODEL_DIR" --out "$OUT_DI
 
 其他因子条件使用 `--cpu-offload off`。容量运行使用 `--purpose capacity --rows N --k 32 --chunk-rows 256 --attention sdpa --allocator-fraction 0.25 --save-output "$OUT_DIR/output.pt"`；使用 `scripts/compare_capacity_outputs.py` 对照相同输入的输出。allocator fraction 应明确设定并记录其他 GPU 活动；allocator OOM 不自动等于整卡 OOM。
 
-[中文阶段增补](reports/memory-bounded-stage-20261030.zh-CN.pdf)与[可编辑 Markdown](reports/memory-bounded-stage-20261030.zh-CN.md)等待 Human 审核。运行 `python scripts/build_stage_report_20261030.py --output-dir "$OUT_DIR/reports"` 可重新生成 PDF；本次构建使用 ReportLab 4.4.9 和 Windows 宋体/黑体。可用 `--cjk-font` 指定其他完整中文字体，替换字体可能改变分页。
+[中文阶段增补](reports/memory-bounded-stage-20261030.zh-CN.pdf)与[可编辑 Markdown](reports/memory-bounded-stage-20261030.zh-CN.md)记录了早期实验阶段。运行 `python scripts/build_stage_report_20261030.py --output-dir "$OUT_DIR/reports"` 可重新生成 PDF；本次构建使用 ReportLab 4.4.9 和 Windows 宋体/黑体。可用 `--cjk-font` 指定其他完整中文字体，替换字体可能改变分页。
 
-[固定 verl 补丁与 Worker 设置](../integrations/verl_6920/README.zh-CN.md)记录源码版本、配置和离线校验。真实 Worker 运行是直接进程冒烟，不代表 Ray 远程调度或多卡运行。此前已审核的技术报告和架构图仍描述原快照，尚未修订以声明这些新测量。
+[固定 verl 补丁与 Worker 设置](../integrations/verl_6920/README.zh-CN.md)记录源码版本、配置和离线校验。真实 Worker 运行是直接进程冒烟，不代表 Ray 远程调度或多卡运行。此前的技术报告和架构图仍描述原快照，尚未修订以声明这些新测量。
 
 ## 最终有界 Worker 对照
 
 最终 N=1024/4096/8192 的 ABBA 矩阵每路径使用两个独立进程，每进程一次预热和五次计数。包含 128/256/512 行分块对照在内的 96 份完整紧凑输出均与同长度 Dense 参考逐值一致。N=8192、fraction 0.50 时，Dense / Chunked 的 peak allocated 为 3596.638 / 681.630 MiB，reserved 为 3846 / 1126 MiB；该 Worker 调用的 allocated 降幅为 81.05%。Dense 在 8704 成功、9216 OOM；Chunked 在已测最大点 32768 成功，该长度没有同 N Dense 真值。这些是 allocator 预算结果，不是整卡显存。
 
-预热后 8192 的 perf-counter p50/p95 为 Dense 570.8/599.6 ms、Chunked 626.3/944.6 ms。A/A 波动及主机时钟差异限制了时延解释；此前一组 8192 冷调用为 3382.176/8756.047 ms。不声明加速。[汇总数据](../results/worker-benchmark-summary.json)、[图表](figures/worker-memory-timing.png)、[分块对照](figures/worker-chunk-tradeoff.png)与[复现说明](experimental-reproduction.md)记录具体范围。新增内容等待 Human 审核。
+预热后 8192 的 perf-counter p50/p95 为 Dense 570.8/599.6 ms、Chunked 626.3/944.6 ms。A/A 波动及主机时钟差异限制了时延解释；此前一组 8192 冷调用为 3382.176/8756.047 ms。不声明加速。[汇总数据](../results/worker-benchmark-summary.json)、[图表](figures/worker-memory-timing.png)、[分块对照](figures/worker-chunk-tradeoff.png)与[复现说明](experimental-reproduction.md)记录具体范围。
 
 独立 N=4096 profiler 重放中，Dense / Chunked 分别有 97 / 112 次 `aten::mm`（self CUDA 88.8 / 103.6 ms）、1 / 16 次 `aten::topk`（18.0 / 19.7 ms），两者各有 290 次锁页 HtoD 拷贝（74.9 / 73.3 ms）。这些活动可能重叠或嵌套，且包含 profiler 开销；它们说明观察到的工作，不能相加为关键路径。

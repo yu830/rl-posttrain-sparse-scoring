@@ -6,6 +6,7 @@ from xml.etree import ElementTree as ET
 import re
 import hashlib
 import json
+import os
 import platform
 import shutil
 import subprocess
@@ -36,6 +37,9 @@ for lang in ('en', 'zh-CN'):
     required += [f'docs/architecture/architecture.{lang}.{ext}' for ext in ('svg','png')]
     required += [f'docs/reports/technical-report.{lang}.{ext}' for ext in ('tex','pdf')]
     required += [f'assets/report-cover.{lang}.png', f'docs/benchmark-methodology.{lang}.md']
+    required += [f'docs/architecture/system-overview.{lang}.{ext}' for ext in ('svg','png')]
+    required += [f'docs/reports/memory-bounded-experimental.{lang}.{ext}' for ext in ('tex','pdf')]
+required += ['docs/figures/worker-summary.svg', 'docs/figures/worker-summary.png']
 for p in required:
     check((ROOT / p).is_file(), f'required asset: {p}')
 if errors:
@@ -54,9 +58,12 @@ if '--locked-environment' in sys.argv:
         path = run('kpsewhich', name).strip()
         check(bool(path) and hashlib.sha256(Path(path).read_bytes()).hexdigest() == digest, f'locked TeX package: {name}')
 
-for md in ROOT.rglob('*.md'):
-    if 'build' in md.parts:
-        continue
+project_files = []
+for folder, dirs, files in os.walk(ROOT):
+    dirs[:] = [name for name in dirs if name not in {'.git', '.venv', '.pytest_cache', '__pycache__', 'build'}]
+    project_files.extend(Path(folder) / name for name in files)
+
+for md in (path for path in project_files if path.suffix == '.md'):
     text = md.read_text(encoding='utf8')
     for target in re.findall(r'\]\(([^)]+)\)', text):
         url = target.split()[0]
@@ -64,16 +71,16 @@ for md in ROOT.rglob('*.md'):
         if parsed.scheme or url.startswith('#'):
             continue
         resolved = (md.parent / unquote(parsed.path)).resolve()
-        check(resolved.is_file() and (resolved == ROOT or ROOT in resolved.parents), f'link in {md.relative_to(ROOT)}: {url}')
+        check(resolved.exists() and (resolved == ROOT or ROOT in resolved.parents), f'link in {md.relative_to(ROOT)}: {url}')
 
 switch = '[English](./README.md) | [简体中文](./README.zh-CN.md)'
 for name, lang in [('README.md','en'), ('README.zh-CN.md','zh-CN')]:
     s = read(name)
     check(s.startswith(switch), f'{name}: language switch')
-    for p in [f'./docs/architecture/architecture.{lang}.png',f'./docs/reports/technical-report.{lang}.pdf',f'./assets/report-cover.{lang}.png']:
+    for p in [f'./docs/architecture/system-overview.{lang}.svg',f'./docs/reports/memory-bounded-experimental.{lang}.pdf',f'./docs/architecture/system-overview.{lang}.png']:
         check(p in s, f'{name}: matching {p}')
     other = 'zh-CN' if lang == 'en' else 'en'
-    check(f'./docs/reports/technical-report.{other}.pdf' not in s, f'{name}: no wrong-language report link')
+    check(f'./docs/reports/memory-bounded-experimental.{other}.pdf' not in s, f'{name}: no wrong-language report link')
 
 tex = {lang:read(f'docs/reports/technical-report.{lang}.tex') for lang in ('en','zh-CN')}
 def cite_keys(s):
@@ -96,6 +103,23 @@ for lang in ('en','zh-CN'):
         check(im.width>=900 and im.height>=1300, f'{lang}: cover resolution')
 check(geometries[0]==geometries[1], 'SVG geometry and edges match across languages')
 
+system_geometries=[]
+for lang in ('en','zh-CN'):
+    system=ET.parse(ROOT/f'docs/architecture/system-overview.{lang}.svg').getroot()
+    system_geometries.append([(el.tag.rsplit('}',1)[-1],tuple(sorted(el.attrib.items())))
+                              for el in system.iter() if el.tag.rsplit('}',1)[-1] in ('rect','line','path')])
+    with Image.open(ROOT/f'docs/architecture/system-overview.{lang}.png') as im:
+        check(im.width>=1600 and im.height>=1400, f'{lang}: system overview PNG resolution')
+    report=f'docs/reports/memory-bounded-experimental.{lang}.pdf'
+    meta=run('pdfinfo',report)
+    report_text=run('pdftotext',report,'-')
+    check(bool(re.search(r'^Author:\s+Jiacheng Yu\s*$',meta,re.M)), f'{lang}: current report author')
+    for value in ('81.05%', '171', 'ad395e9'):
+        check(value in report_text, f'{lang}: current report contains {value}')
+    check(not re.search(r'AI.assisted|human review|待.?Human.?审核|AI.?辅助|文稿状态',report_text,re.I),
+          f'{lang}: current report has no draft metadata')
+check(system_geometries[0]==system_geometries[1], 'system overview geometry matches across languages')
+
 for lang in ('en','zh-CN'):
     pdf=f'docs/reports/technical-report.{lang}.pdf'
     meta=run('pdfinfo',pdf)
@@ -103,8 +127,7 @@ for lang in ('en','zh-CN'):
     m=re.search(r'^Pages:\s+(\d+)',meta,re.M)
     check(bool(m) and int(m.group(1))>=2, f'{lang}: readable multipage PDF')
     text=run('pdftotext',pdf,'-')
-    review='Author reviewed the c1ab1f4 report; AI assisted' if lang=='en' else '作者已审核 c1ab1f4 版报告；AI 辅助'
-    check(review in text, f'{lang}: version-scoped author review and AI assistance')
+    check('c1ab1f4' in text, f'{lang}: historical report identifies its source snapshot')
     for pattern in (r'drive\.google\.com',r'AIINFRA-POSTTRAIN-',r'\bhandoff/',r'\bevidence/',r'AI-assisted engineering writer for'):
         check(not re.search(pattern,text,re.I), f'{lang}: no internal marker {pattern}')
     log=ROOT/f'build/{lang}/technical-report.{lang}.log'
@@ -113,8 +136,8 @@ for lang in ('en','zh-CN'):
         bad=r'Overfull \\hbox|Missing character:|LaTeX Font Warning|There were undefined (?:references|citations)|Citation .* undefined'
         check(not re.search(bad,contents), f'{lang}: no missing glyphs, overfull boxes or unresolved references')
 
-for p in ROOT.rglob('*'):
-    if not p.is_file() or 'build' in p.parts or p.suffix not in ('.md','.tex','.bib','.json','.svg'):
+for p in project_files:
+    if p.suffix not in ('.md','.tex','.bib','.json','.svg'):
         continue
     s=p.read_text(encoding='utf8')
     for pattern in (r'drive\.google\.com',r'AIINFRA-POSTTRAIN-',r'\bhandoff/',r'\bevidence/',r'AI-assisted engineering writer for'):

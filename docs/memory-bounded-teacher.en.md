@@ -1,7 +1,5 @@
 # Memory-Bounded Teacher Scoring
 
-> The 30 October follow-up is AI-assisted and awaits Human review. The earlier reviewed report remains a separate snapshot.
-
 This experimental path moves row chunking in front of the LM head while retaining the teacher's full-vocabulary-normalized log probabilities at student candidate IDs and the teacher's own Top-K IDs. It targets the frozen teacher in the open [verl #6920](https://github.com/verl-project/verl/pull/6920) at `87cd055e872f9fdd7b976fcd797a0934b6dba265`. The patch is opt-in and is not an upstream merge. Row chunking itself is established prior art.
 
 The adapter is installed before FSDP wrapping. Its ordinary model call executes the backbone and final norm, then invokes the existing LM head on a bounded number of rows. It returns compact scores without concatenating a full logits tensor when the chunk is smaller than the input. The worker preserves its nested offsets and two-field CPU output. If an unbudgeted tile covers all rows, the integration uses native dense forward and reduces logits after FSDP returns.
@@ -24,7 +22,7 @@ The pinned trainer already applies the response mask to its aggregate metrics. T
 
 An independent review identified a device-sampler failure exit-status gap; the probe now retains the Worker result and fails the overall observation if sampling is unavailable. All ten measured Worker processes had sampler failure `null`; the measured source snapshot is retained separately. Two initial preflights were NOT_RUN because the recorded resource gate was not met, and an initial CPU import-order failure was corrected before GPU execution.
 
-[Experimental reproduction](experimental-reproduction.md) includes commands, setup and test boundaries. The [English LaTeX report](reports/memory-bounded-experimental.en.pdf) and its editable source remain pending Human review.
+[Experimental reproduction](experimental-reproduction.md) includes commands, setup and test boundaries. The [English technical report](reports/memory-bounded-experimental.en.pdf) describes the final Worker comparison.
 
 ## 30 October follow-up: stability, capacity and consumer
 
@@ -105,14 +103,14 @@ python scripts/full_teacher_benchmark.py --model-dir "$MODEL_DIR" --out "$OUT_DI
 
 Use `--cpu-offload off` for the other factorial conditions. Capacity runs use `--purpose capacity --rows N --k 32 --chunk-rows 256 --attention sdpa --allocator-fraction 0.25 --save-output "$OUT_DIR/output.pt"`; compare same-input outputs with `scripts/compare_capacity_outputs.py`. Select an allocator fraction deliberately and record other GPU activity; an allocator OOM is not automatically an all-device OOM.
 
-The [English stage supplement](reports/memory-bounded-stage-20261030.en.pdf) and [editable Markdown](reports/memory-bounded-stage-20261030.en.md) are pending Human review. To regenerate the PDF, run `python scripts/build_stage_report_20261030.py --output-dir "$OUT_DIR/reports"`; the measured build used ReportLab 4.4.9 and Windows SimSun/SimHei fonts. A different full Chinese font can be supplied with `--cjk-font`; font substitution may change pagination.
+The [English stage supplement](reports/memory-bounded-stage-20261030.en.pdf) and [editable Markdown](reports/memory-bounded-stage-20261030.en.md) document the earlier experimental stage. To regenerate the PDF, run `python scripts/build_stage_report_20261030.py --output-dir "$OUT_DIR/reports"`; the measured build used ReportLab 4.4.9 and Windows SimSun/SimHei fonts. A different full Chinese font can be supplied with `--cjk-font`; font substitution may change pagination.
 
-The [pinned verl patch and worker setup](../integrations/verl_6920/README.md) contain the required source revision, configuration and offline verification. Actual worker execution is a direct-process smoke, not a Ray dispatch or multi-GPU run. The earlier reviewed technical reports and diagrams describe their original snapshot and have not been revised to assert these newer measurements.
+The [pinned verl patch and worker setup](../integrations/verl_6920/README.md) contain the required source revision, configuration and offline verification. Actual worker execution is a direct-process smoke, not a Ray dispatch or multi-GPU run. The earlier technical reports and diagrams describe their original snapshot and have not been revised to assert these newer measurements.
 
 ## Final bounded Worker comparison
 
 The final N=1024/4096/8192 ABBA matrix used two fresh processes per mode, one warmup and five measured calls per process. All 96 saved complete compact outputs, including the 128/256/512-row sensitivity runs, matched their same-length Dense references exactly. At N=8192 and fraction 0.50, peak allocated was 3596.638 / 681.630 MiB and reserved was 3846 / 1126 MiB (Dense / Chunked); the allocated decrease is 81.05% in that Worker-call scope. Dense passed at 8704 and OOMed at 9216, while Chunked passed at the largest tested 32768; the latter has no same-length Dense oracle. These are allocator-budget results, not total-device memory.
 
-The warm 8192 perf-counter p50/p95 was 570.8/599.6 ms Dense and 626.3/944.6 ms Chunked. A/A variation and host-clock differences limit interpretation; earlier 8192 cold calls were 3382.176/8756.047 ms. No speedup is claimed. The [aggregated data](../results/worker-benchmark-summary.json), [figure](figures/worker-memory-timing.png), [chunk sensitivity](figures/worker-chunk-tradeoff.png) and [reproduction](experimental-reproduction.md) retain the precise scope. New content is pending Human review.
+The warm 8192 perf-counter p50/p95 was 570.8/599.6 ms Dense and 626.3/944.6 ms Chunked. A/A variation and host-clock differences limit interpretation; earlier 8192 cold calls were 3382.176/8756.047 ms. No speedup is claimed. The [aggregated data](../results/worker-benchmark-summary.json), [figure](figures/worker-memory-timing.png), [chunk sensitivity](figures/worker-chunk-tradeoff.png) and [reproduction](experimental-reproduction.md) retain the precise scope.
 
 A separate N=4096 profiler replay recorded 97 / 112 `aten::mm` calls (88.8 / 103.6 ms self CUDA), 1 / 16 `aten::topk` calls (18.0 / 19.7 ms) and 290 pinned HtoD copies in each path (74.9 / 73.3 ms), Dense / Chunked respectively. These activity categories may overlap or be nested and include profiling overhead; they identify observed work rather than a summed critical path.

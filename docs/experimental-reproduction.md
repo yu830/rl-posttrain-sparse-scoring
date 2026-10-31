@@ -171,9 +171,9 @@ VERL_6920_SOURCE="$VERL_DIR" VERL_MASK_REGRESSION_SOURCE="$VERL_DIR" \
 bash scripts/build_experimental_report.sh
 ```
 
-The two actual upstream metric parity tests explicitly skip without the fixed checkout and dependencies. The report builder needs XeLaTeX, BibTeX, Latin Modern and a full Chinese font; alternatively set `LATEX_ENGINE=tectonic` with Tectonic available. It writes only new experimental PDFs. New report text awaits Human review.
+The two actual upstream metric parity tests explicitly skip without the fixed checkout and dependencies. The report builder needs XeLaTeX, BibTeX, Latin Modern and a full Chinese font; alternatively set `LATEX_ENGINE=tectonic` with Tectonic available. It writes the experimental reports.
 
-上游指标对照缺少固定 checkout 时会明确跳过。报告构建需要 XeLaTeX、BibTeX、Latin Modern 和完整中文字体；也可使用 Tectonic。构建只写新实验报告，新增正文仍待 Human 审核。
+上游指标对照缺少固定 checkout 时会明确跳过。报告构建需要 XeLaTeX、BibTeX、Latin Modern 和完整中文字体；也可使用 Tectonic。构建只写实验报告。
 
 ## Regenerate the figures / 重建图表
 
@@ -185,3 +185,7 @@ uv venv --python 3.12 "$PLOT_ENV"
 uv pip install --python "$PLOT_ENV/bin/python" matplotlib==3.11.1
 "$PLOT_ENV/bin/python" scripts/plot_worker_results.py
 ```
+
+The public system overview and summary chart are editable SVG files. Regenerate them from the repository and the checked-in benchmark summary with `python scripts/render_public_assets.py`; export the SVGs to PNG with an SVG renderer for the report figures.
+
+首页系统图和汇总图以可编辑 SVG 保存；在仓库中运行 `python scripts/render_public_assets.py` 可根据已提交的汇总数据重建，报告用 PNG 可由 SVG 渲染器导出。

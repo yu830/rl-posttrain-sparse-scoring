@@ -2,99 +2,91 @@
 
 # Memory-Bounded Teacher Scoring
 
-Teacher scoring for language-model post-training can return only a small set of token scores while still materializing a much larger token-by-vocabulary logits tensor. This experimental, opt-in integration chunks hidden-state rows **before the LM head** in a real, pinned verl Teacher Worker. It preserves full-vocabulary-normalized log probabilities at the Student candidate IDs and the Teacher's own ordered Top-K, rather than substituting candidate-only normalization.
+**Full-vocabulary teacher scores with a smaller readout memory footprint.**
 
-The implementation enters the normal outer FSDP2 forward, preserves tied weights and module hooks, and falls back to the native dense path when an unbudgeted chunk covers all rows. It targets single-GPU Qwen2 with CPU offload; the head budget is an estimate, not a device-wide hard limit. The earlier selected-logit fusion proposal remains **NO-GO** for the complete Teacher contract.
+Teacher scoring in LLM post-training can allocate a large token-by-vocabulary logits tensor even when the consumer needs only compact outputs. This project integrates a row-chunked LM-head readout into a pinned verl `TeacherFSDPWorker`, preserving full-vocabulary-normalized candidate logprobs and the teacher's ordered Top-K. The implementation and its consumer path were evaluated in a single-GPU Qwen2/FSDP2 experimental setup.
 
-## Measured results
+[Technical report](./docs/reports/memory-bounded-experimental.en.pdf) · [Report source](./docs/reports/memory-bounded-experimental.en.tex) · [Reproduce](./docs/experimental-reproduction.md) · [Experiment data](./results/worker-benchmark-summary.json) · [Historical G2 results](./docs/g2-results.en.md)
 
-Real `TeacherFSDPWorker`, Qwen2.5-0.5B-Instruct, BF16, K=32, SDPA, 256-row chunks and the same PyTorch allocator fraction 0.50; inputs are synthetic. Each mode and length has two fresh processes in ABBA order, each with one first-call warmup and five measured calls. Values below are per-call PyTorch peaks and synchronized Worker `perf_counter` spans, including diagnostic hooks and journal activity.
+## Key results
 
-| N | Peak allocated MiB, Dense / Chunked | Peak reserved MiB, Dense / Chunked | Warm p50 / p95 ms, Dense | Warm p50 / p95 ms, Chunked |
-| ---: | ---: | ---: | ---: | ---: |
-| 1,024 | 1,517.1 / 665.3 | 2,644 / 1,124 | 210.4 / 288.0 | 159.4 / 187.0 |
-| 4,096 | 2,409.4 / 672.3 | 2,944 / 1,130 | 322.3 / 414.4 | 318.8 / 327.5 |
-| 8,192 | 3,596.6 / 681.6 | 3,846 / 1,126 | 570.8 / 599.6 | 626.3 / 944.6 |
+| Worker comparison at **N = 8,192** | Result |
+| --- | --- |
+| PyTorch peak allocated | **81.05% lower** · 3,596.6 → 681.6 MiB |
+| Candidate logprobs | **262,144 / 262,144** exactly matched |
+| Ordered teacher Top-K | **8,192 / 8,192** rows exactly matched |
+| CPU regression CI | **171 passed**, 2 deselected · [main run](https://github.com/yu830/rl-posttrain-sparse-scoring/actions/runs/41056928510) |
 
-At N=8192, peak allocated decreases **81.05%** in this complete Worker-call scope; all 262,144 candidate logprobs and 8,192 ordered Teacher Top-K rows match the Dense reference exactly. All 96 saved first-call and measured outputs across the new matrix were reopened and compared. At fraction 0.50, Dense ran at N=8704 and OOMed at 9216; Chunked ran at 32768, the largest tested point. There is no same-length Dense numerical reference at 32768. These are PyTorch allocator results, not whole-card VRAM savings or a hard device partition.
+The GPU comparison uses Qwen2.5-0.5B-Instruct, BF16, one RTX 5070 Laptop GPU, FSDP2 with CPU offload, SDPA, `K=32`, `chunk_rows=256`, and a PyTorch allocator fraction of `0.50`. Inputs are synthetic. The percentage describes **peak allocated by the PyTorch allocator during a complete Worker call**, not total device VRAM. CPU CI ran separately at the evaluated baseline revision [`ad395e9`](https://github.com/yu830/rl-posttrain-sparse-scoring/commit/ad395e94923bcf65fff4bc1eeb2e0e1505fd4f91).
 
-Timing is descriptive: the 1024 Dense A/A process medians were 229.2 and 158.0 ms, and host clocks differed by up to 8.33% in the chunk-size sweep. In an earlier single cold N=8192 pair, Dense took 3,382 ms and Chunked 8,756 ms; the synchronized span extended through nested CPU return and included hooks and sampler activity. The earlier CUDA `unknown error` and clock discrepancies remain unexplained; no general acceleration or RL training benefit is claimed. A separate bounded Worker-to-loss-to-Student test matched the pinned loss and a restricted RMSNorm update; full Ray dispatch and RL training remain unverified.
+## Why this matters
 
-![Measured Worker memory and timing](./docs/figures/worker-memory-timing.png)
+A compact API response does not guarantee a compact execution path: a dense LM head may still materialize `N × V` logits before selecting the requested values. Moving row chunking **before** the head limits the live logits tile while retaining the full-vocabulary normalizer and teacher Top-K required by the scoring contract. The project illustrates how to change a model execution path while respecting distributed-module lifecycle, output layout and a downstream training consumer—concerns shared by LLM runtime and RL infrastructure work.
 
-[Results and scope](./docs/memory-bounded-teacher.en.md) · [Evidence manifest](./results/worker-evidence-manifest.json) · [Reproduce](./docs/experimental-reproduction.md) · [Experimental report](./docs/reports/memory-bounded-experimental.en.pdf) · [Historical G2 results](./docs/g2-results.en.md)
+## System overview
 
-New experimental results and report text are AI-assisted and **pending Human review**.
+<p align="center"><img src="./docs/architecture/system-overview.en.svg" alt="Teacher scoring execution and validation architecture" width="920"></p>
 
-## Industrial problem
+- The opt-in adapter runs within the normal FSDP2 forward and preserves the tied head and module hooks.
+- The dense baseline materializes the full logits tensor; the chunked path reduces one row tile at a time and returns compact results.
+- Candidate scores use the full-vocabulary normalizer, and teacher Top-K is selected over the full vocabulary.
+- A separate validation feeds actual Worker outputs into the pinned reverse-KL consumer and checks student gradients and a restricted final-RMSNorm update.
 
-An on-policy distillation (OPD) consumer may need teacher scores for a different set of token IDs at each causal position. Position selection, candidate selection, and probability normalization are separate problems. A compact response does not by itself avoid dense LM-head computation, and candidate-conditioned probabilities are not full-vocabulary probabilities. An open verl training implementation now provides a concrete conditional-loss consumer; its complete diagnostics still require full-vocabulary information.
+[Architecture SVG](./docs/architecture/system-overview.en.svg) · [PNG](./docs/architecture/system-overview.en.png)
 
-## Prior art
+## Verified results
 
-- At [the audited SGLang revision](https://github.com/sgl-project/sglang/blob/4517a5ff1bbd1f944d6bde1819300ed14af7b698/python/sglang/srt/managers/tokenizer_manager_score_mixin.py), `/score` already supports per-item labels and optional candidate normalization; [position selection](https://github.com/sgl-project/sglang/blob/4517a5ff1bbd1f944d6bde1819300ed14af7b698/python/sglang/srt/layers/logits_processor.py) exists with dense readout.
-- [SGLang PR #38119](https://github.com/sgl-project/sglang/pull/38119) implements per-position IDs on `sglang-miles` with full normalization; it was open when checked on 29 October 2026. [vLLM PR #56984](https://github.com/vllm-project/vllm/pull/56984) merged a per-row interface on 3 October 2026.
-- [OmniLens](https://arxiv.org/abs/2608.10260v1) and [IndexedLogits](https://github.com/pettyjohnjn/indexed_logits/tree/6020cb446cde8cb2b74a8fdf90db905a320936c3) provide prior selected-logit work. This project does not claim that primitive as novel.
-- Open [verl PR #7809](https://github.com/verl-project/verl/pull/7809) already implements a vocabulary-tiled, full-normalized selected-logprob path for Megatron student distillation. Its GPU results are third-party claims, not project results.
+The table reports per-call allocator peaks and synchronized warm Worker spans. Each mode and length used two fresh processes in ABBA order, with one warmup and five measured calls per process; p50 and p95 summarize ten measured calls.
 
-## Earlier research approach
+| Projected rows `N` | Mode | Peak allocated (MiB) | Peak reserved (MiB) | p50 (ms) | p95 (ms) |
+| ---: | :--- | ---: | ---: | ---: | ---: |
+| 1,024 | Dense | 1,517.1 | 2,644 | 210.4 | 288.0 |
+| 1,024 | Chunked | 665.3 | 1,124 | 159.4 | 187.0 |
+| 4,096 | Dense | 2,409.4 | 2,944 | 322.3 | 414.4 |
+| 4,096 | Chunked | 672.3 | 1,130 | 318.8 | 327.5 |
+| 8,192 | Dense | 3,596.6 | 3,846 | 570.8 | 599.6 |
+| 8,192 | Chunked | 681.6 | 1,126 | 626.3 | 944.6 |
 
-For hidden row `h_t` and candidate set `C_t`, the proposed research contract obtains teacher logits for the ordered IDs and normalizes only over that set. A same-semantics dense reference must preserve causal shifts, masks, model-specific head transforms and candidate order. A potential selected projection must be compared with dense, chunked-dense, eager indexed and existing fused baselines.
+<p align="center"><img src="./docs/figures/worker-summary.svg" alt="Worker peak allocation and timing comparison" width="920"></p>
 
-Conditional reverse KL differs from full-vocabulary KL because it omits support mass and tail contributions. With one candidate, its loss and local gradient are zero. The inspected [Rethinking OPD author code](https://github.com/Thinking-Space/Rethinking-OPD/tree/ac26e38d6f1572eb027597b48a9f4e01f6915ef8) uses full-normalized log-ratio rewards and a PPO surrogate; conditional-only teacher scores are not a drop-in equivalent. Open [verl PR #6920](https://github.com/verl-project/verl/pull/6920) implements student-top-K conditional reverse KL, while also calculating teacher mass and teacher top-K diagnostics that selected logits alone cannot reproduce. Its reported training run has not been independently reproduced here.
+The 81.05% figure applies only to **peak allocated** at `N=8192`; reserved memory is reported separately. Timing includes diagnostic hooks and CPU return, and the small sample showed process and clock variation, so it is descriptive rather than a general speedup claim. Under the same allocator fraction, Dense succeeded at 8,704 rows and OOMed at 9,216; Chunked ran at the largest tested point, 32,768. The latter has no same-length Dense reference. See the [detailed results](./docs/memory-bounded-teacher.en.md) and [evidence manifest](./results/worker-evidence-manifest.json) for the full measurement context.
 
-## Architecture
+## Reproducibility
 
-![Current memory-bounded Teacher scoring path](./docs/architecture/memory-bounded.en.png)
-
-The current diagram shows the single-GPU FSDP2 execution boundary, the pre-head row-chunked and dense fallback paths, and the response-mask boundary. The [editable bilingual topology](./docs/architecture/memory-bounded-topology.json) and [English SVG](./docs/architecture/memory-bounded.en.svg) generate the same diagram; unsupported and unverified paths remain explicit.
-
-### Earlier research snapshot
-
-![English architecture: existing upstream paths, proposed components and prior art](./docs/architecture/architecture.en.png)
-
-This historical diagram distinguishes **existing upstream**, **proposed and unimplemented**, and **prior art** for the earlier research snapshot. [Editable topology](./docs/architecture/topology.json) generates both language editions; [English SVG](./docs/architecture/architecture.en.svg) is also available.
-
-## Reproduction
-
-### CPU regression CI
-
-The [CPU workflow](./.github/workflows/cpu-tests.yml) uses a separate, hash-locked Python 3.12 / CPU-only PyTorch environment and the pinned verl source for patch checks. It runs deterministic CPU regressions without downloading model weights. Two cases that require the full upstream Trainer runtime are explicitly deselected; unexpected skips fail the job. CUDA tests, real GPU Teacher Worker execution, benchmarks and RL training are outside this CI. See [GitHub Actions](https://github.com/yu830/rl-posttrain-sparse-scoring/actions) for actual run results.
-
-### Real Worker and documents
-
-The [experimental Worker reproduction](./docs/experimental-reproduction.md) covers the fixed environment, long-sequence Dense/Chunked comparison, no-fraction ABBA controls and response-mask tests.
-
-These commands rebuild the documentation, not a scoring service or benchmark. Requirements: XeLaTeX, BibTeX, Poppler (`pdftoppm`, `pdfinfo`, `pdftotext`), Python 3 with Pillow, and the bundled limited-glyph font. For example:
+The GPU Worker setup uses Linux x86-64, Python 3.12, a CUDA-capable NVIDIA GPU, the [hash-locked dependencies](./requirements-worker-linux-py312.lock), [verl revision `87cd055`](https://github.com/verl-project/verl/tree/87cd055e872f9fdd7b976fcd797a0934b6dba265), and the pinned Qwen2.5-0.5B-Instruct model. Follow the [setup and model instructions](./docs/experimental-reproduction.md) to prepare `VERL_DIR`, `MODEL_DIR`, and `OUT_DIR`, and apply the integration patch. Then run this short Dense/Chunked comparison from the repository root:
 
 ```bash
-bash scripts/build_assets.sh
-python3 scripts/verify_assets.py
+python scripts/long_worker_probe.py --verl-dir "$VERL_DIR" --model-dir "$MODEL_DIR" \
+  --out "$OUT_DIR/dense-1024.json" --mode dense --lengths 1024 --k 32 \
+  --chunk-rows 256 --allocator-fraction 0.50 --warmup 1 --repeats 2 --sample-device-ms 0
+python scripts/long_worker_probe.py --verl-dir "$VERL_DIR" --model-dir "$MODEL_DIR" \
+  --out "$OUT_DIR/chunked-1024.json" --mode chunked --lengths 1024 --k 32 \
+  --chunk-rows 256 --allocator-fraction 0.50 --warmup 1 --repeats 2 --sample-device-ms 0
+python scripts/compare_capacity_outputs.py --dense "$OUT_DIR/dense-1024.call01.pt" \
+  --candidate "$OUT_DIR/chunked-1024.call01.pt" --out "$OUT_DIR/compare-1024.json"
 ```
 
-The [build environment lock](./docs/build-environment.md) records the documentation build versions and hashes. The [bundled font subset](./assets/fonts/README.md) is pinned and licensed under OFL 1.1. For new text requiring additional glyphs, install a full font from the [Noto CJK project](https://github.com/notofonts/noto-cjk) and set `CJK_FONT` to its absolute path. The public [benchmark methodology](./docs/benchmark-methodology.en.md) defines proposed experiments, baselines and reporting boundaries.
+The [CPU CI workflow](./.github/workflows/cpu-tests.yml) uses its own hash-locked CPU environment, fetches pinned verl source for patch checks, and runs deterministic regressions without model weights. It is separate from the real GPU Worker measurements; two full Trainer-runtime parity cases are deselected in that job. The reproduction guide also contains the full benchmark matrix, capacity tests and environment details.
 
-The independent [G2 reference, real teacher-scoring commands and observations](./docs/g2-results.en.md) document the separate Python environment and fixed model. These checks are not an optimized serving implementation.
+## Current scope
 
-## Historical G2 results and limitations
+The measured implementation targets a tied-head Qwen2 model on one GPU with FSDP2; the Worker-to-student experiment checks one restricted final-RMSNorm update. Full RL training throughput, Ray-dispatched execution, multi-GPU behavior and production stability are outside the present validation. Allocator fractions and the readout budget estimate are not whole-device memory limits.
 
-| Item | Status |
+## Future work
+
+- Extend validation to multi-GPU, tensor parallelism and FSDP1.
+- Add and validate packed variable-length inputs and broader model/head coverage.
+- Study the longer-sequence capacity frontier with same-length numerical references where feasible.
+- Integrate the path into an end-to-end RL trainer and measure throughput and stability.
+
+## Project map
+
+| Path | Contents |
 | --- | --- |
-| Synthetic numerical and gradient reference | CPU and GPU checks passed on the recorded fixtures |
-| SGLang teacher scoring | One real BF16 HTTP smoke request passed using synthetic candidate IDs |
-| Real-model numerical comparison | **FAILED:** 2 of 32 values exceeded the frozen BF16 budget |
-| FP32 precision diagnosis | IEEE Triton and torch-native attention passed; TF32 Triton exceeded the fixed budget |
-| Representative performance and real training | **NOT ESTABLISHED**; one separate trace is exploratory |
-| Project speedup, memory or quality gain | **NOT ESTABLISHED** |
+| [`integrations/verl_6920/`](./integrations/verl_6920/) | Opt-in verl patch and integration instructions |
+| [`scripts/`](./scripts/) | Worker probes, comparisons and report build scripts |
+| [`tests/`](./tests/) | Scoring, integration and regression tests |
+| [`results/`](./results/) | Aggregated results and evidence manifest |
+| [`docs/reports/`](./docs/reports/) | Bilingual reports and editable sources |
 
-The former G3 fusion proposal remains **NO-GO** for the full teacher contract; the current memory-bounded path is evaluated separately. Arithmetic or tensor-size examples in the report are analytical only; third-party measurements are not project results. The author reviewed both AI-assisted report editions at commit `c1ab1f4308c2ac1aecf47e222f210a16d0a5a898`; later substantive technical revisions require a new review. The reports describe that reviewed snapshot, while the new G2 observations are recorded separately and have not been author-reviewed.
-
-## Report
-
-[Experimental memory-bounded report (PDF)](./docs/reports/memory-bounded-experimental.en.pdf) · [Editable LaTeX](./docs/reports/memory-bounded-experimental.en.tex). This AI-assisted edition contains new results awaiting Human review.
-
-The earlier report is retained as its originally reviewed research snapshot:
-
-[![English technical report cover](./assets/report-cover.en.png)](./docs/reports/technical-report.en.pdf)
-
-[Read the English PDF](./docs/reports/technical-report.en.pdf) · [English TeX](./docs/reports/technical-report.en.tex) · [Shared equations](./docs/reports/common-equations.tex) · [Bibliography](./docs/reports/references.bib)
+The earlier selected-logit fusion proposal remains **NO-GO** for the full Teacher contract; the [historical results](./docs/g2-results.en.md) retain its negative findings.

@@ -33,6 +33,21 @@ TOKEN = re.compile(r"(\*\*.+?\*\*|`[^`]+`|\[[^\]]+\]\([^)]+\))")
 def sha256(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
+def register_latin():
+    windows = Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts"
+    families = [
+        (windows, ("times.ttf", "timesbd.ttf", "timesi.ttf", "timesbi.ttf")),
+        (Path("/mnt/c/Windows/Fonts"), ("times.ttf", "timesbd.ttf", "timesi.ttf", "timesbi.ttf")),
+        (Path("/usr/share/fonts/truetype/liberation2"), ("LiberationSerif-Regular.ttf", "LiberationSerif-Bold.ttf", "LiberationSerif-Italic.ttf", "LiberationSerif-BoldItalic.ttf")),
+        (Path(reportlab.__file__).resolve().parent / "fonts", ("Vera.ttf", "VeraBd.ttf", "VeraIt.ttf", "VeraBI.ttf")),
+    ]
+    font_dir, files = next((directory, names) for directory, names in families
+                           if all((directory / name).is_file() for name in names))
+    for name, file in zip(("StageLatin", "StageLatinBold", "StageLatinItalic", "StageLatinBoldItalic"), files):
+        pdfmetrics.registerFont(TTFont(name, str(font_dir / file)))
+    pdfmetrics.registerFontFamily("StageLatin", normal="StageLatin", bold="StageLatinBold",
+                                 italic="StageLatinItalic", boldItalic="StageLatinBoldItalic")
+
 def register_cjk(explicit):
     windir = Path(os.environ.get("WINDIR", "C:/Windows"))
     paths = [Path(explicit)] if explicit else [
@@ -58,7 +73,7 @@ def inline(text, lang):
         if token.startswith("**"):
             parts.append("<b>" + escape(token[2:-2]) + "</b>")
         elif token.startswith(chr(96)):
-            parts.append(f'<font name="Courier" size="{size}">' + escape(token[1:-1]) + "</font>")
+            parts.append(f'<font name="StageLatin" size="{size}">' + escape(token[1:-1]) + "</font>")
         else:
             link = re.fullmatch(r"\[([^\]]+)\]\(([^)]+)\)", token)
             parts.append('<link href="' + escape(link.group(2), quote=True) + '" color="#243E54">'
@@ -76,7 +91,7 @@ def read_source(path):
     for line in front.splitlines():
         key, value = line.split(":", 1)
         metadata[key.strip()] = value.strip()
-    required = ("title", "subtitle", "author", "edition", "status", "scope", "history", "footer")
+    required = ("title", "subtitle", "author", "edition", "scope", "footer")
     if any(not metadata.get(key) for key in required):
         raise ValueError("Incomplete report metadata")
     if "drive.google.com" in text or re.search(r"[A-Z]:[/\\\\]Users[/\\\\]|/home/[^/]+/", text):
@@ -85,7 +100,7 @@ def read_source(path):
 
 def make_styles(lang):
     cjk = lang == "zh-CN"
-    normal, bold = ("StageCJK", "StageCJKHeading") if cjk else ("Times-Roman", "Times-Bold")
+    normal, bold = ("StageCJK", "StageCJKHeading") if cjk else ("StageLatin", "StageLatinBold")
     body = ParagraphStyle("Body", fontName=normal, fontSize=10.2 if cjk else 10.5,
                           leading=15.0 if cjk else 14.6, textColor=INK, spaceAfter=7,
                           wordWrap="CJK" if cjk else "LTR", splitLongWords=True)
@@ -95,21 +110,21 @@ def make_styles(lang):
                              spaceBefore=2, spaceAfter=10, keepWithNext=True),
         "h3": ParagraphStyle("H3", parent=body, fontName=bold, fontSize=11.6, leading=16,
                              spaceBefore=9, spaceAfter=6, keepWithNext=True),
-        "bullet": ParagraphStyle("Bullet", parent=body, leftIndent=10, bulletIndent=0, spaceAfter=5),
+        "bullet": ParagraphStyle("Bullet", parent=body, leftIndent=10, bulletIndent=0, bulletFontName="StageLatin", spaceAfter=5),
         "caption": ParagraphStyle("Caption", parent=body, fontName=bold, fontSize=9.2,
                                   leading=12.3, spaceBefore=5, spaceAfter=5, keepWithNext=True),
         "cell": ParagraphStyle("Cell", parent=body, fontSize=8.6 if cjk else 8.9,
                                leading=12.2, spaceAfter=0, spaceBefore=0),
         "headcell": ParagraphStyle("HeadCell", parent=body, fontName=bold,
                                    fontSize=8.5 if cjk else 8.7, leading=11.8, spaceAfter=0),
-        "code": ParagraphStyle("Code", parent=body, fontName="Courier", fontSize=8.1,
+        "code": ParagraphStyle("Code", parent=body, fontName="StageLatin", fontSize=8.1,
                                leading=11.2, leftIndent=8, rightIndent=8, backColor=PALE,
                                borderPadding=7, spaceAfter=9),
         "title": ParagraphStyle("Title", parent=body, fontName=bold,
                                 fontSize=30 if cjk else 31, leading=39, spaceAfter=12),
         "subtitle": ParagraphStyle("Subtitle", parent=body, fontSize=13, leading=19, spaceAfter=16),
         "covercell": ParagraphStyle("CoverCell", parent=body, fontSize=10.5, leading=15, spaceAfter=0),
-        "eyebrow": ParagraphStyle("Eyebrow", parent=body, fontName="Helvetica-Bold",
+        "eyebrow": ParagraphStyle("Eyebrow", parent=body, fontName="StageLatinBold",
                                   fontSize=9.8, leading=13, spaceAfter=18),
         "small": ParagraphStyle("Small", parent=body, fontSize=9.2, leading=13.4, textColor=MUTED),
     }
@@ -182,9 +197,9 @@ def body_story(body, lang, styles):
 
 def cover(meta, lang, styles):
     cjk = lang == "zh-CN"
-    labels = ["作者","版本","文稿状态","范围"] if cjk else ["Author","Edition","Document status","Scope"]
+    labels = ["作者","版本","范围"] if cjk else ["Author","Edition","Scope"]
     rows = [[Paragraph(a,styles["covercell"]),Paragraph(inline(meta[b],lang),styles["covercell"])]
-            for a,b in zip(labels,("author","edition","status","scope"))]
+            for a,b in zip(labels,("author","edition","scope"))]
     table = Table(rows,colWidths=[86,WIDTH-86],hAlign="LEFT")
     table.setStyle(TableStyle([
         ("VALIGN",(0,0),(-1,-1),"TOP"),("LEFTPADDING",(0,0),(-1,-1),0),
@@ -196,7 +211,6 @@ def cover(meta, lang, styles):
         Paragraph(inline(meta["title"],lang),styles["title"]),
         Paragraph(inline(meta["subtitle"],lang),styles["subtitle"]),
         HRFlowable(width="100%",thickness=.7,color=INK,spaceAfter=13), table, Spacer(1,16),
-        Paragraph(inline(meta["history"],lang),styles["body"]), Spacer(1,10),
         PageBreak(),
     ]
 
@@ -205,12 +219,12 @@ def decorate(meta, lang):
         canvas.saveState()
         cjk = lang == "zh-CN"
         if doc.page > 1:
-            canvas.setFont("StageCJKHeading" if cjk else "Helvetica",8.8)
+            canvas.setFont("StageCJKHeading" if cjk else "StageLatin",8.8)
             canvas.setFillColor(MUTED)
             canvas.drawString(MARGIN,PH-12*mm,meta["title"])
             canvas.setStrokeColor(RULE); canvas.setLineWidth(.3)
             canvas.line(MARGIN,PH-14.5*mm,PW-MARGIN,PH-14.5*mm)
-        canvas.setFont("StageCJK" if cjk else "Helvetica",8.3); canvas.setFillColor(MUTED)
+        canvas.setFont("StageCJK" if cjk else "StageLatin",8.3); canvas.setFillColor(MUTED)
         canvas.drawString(MARGIN,11.5*mm,meta["footer"])
         canvas.drawRightString(PW-MARGIN,11.5*mm,str(doc.page))
         canvas.restoreState()
@@ -222,7 +236,7 @@ def build(source, target, lang):
     target.parent.mkdir(parents=True,exist_ok=True)
     doc = SimpleDocTemplate(str(target),pagesize=A4,leftMargin=MARGIN,rightMargin=MARGIN,
                             topMargin=21*mm,bottomMargin=21*mm,title=meta["title"],author=meta["author"],
-                            subject=meta["status"],creator="ReportLab Markdown report generator",
+                            subject=meta["scope"],creator="ReportLab Markdown report generator",
                             pageCompression=1,invariant=1)
     callback = decorate(meta,lang)
     doc.build(cover(meta,lang,styles)+body_story(body,lang,styles),onFirstPage=callback,onLaterPages=callback)
@@ -236,6 +250,7 @@ def main():
     p.add_argument("--languages",nargs="+",choices=("en","zh-CN"),default=["en","zh-CN"])
     p.add_argument("--cjk-font")
     args = p.parse_args()
+    register_latin()
     if "zh-CN" in args.languages:
         register_cjk(args.cjk_font)
     results = [build(args.source_dir/f"{STEM}.{lang}.md",args.output_dir/f"{STEM}.{lang}.pdf",lang)

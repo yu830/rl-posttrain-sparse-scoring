@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1440" viewBox="0 0 1600 1440" role="img" aria-label="Teacher scoring, from input to validation">
+<rect width="1600" height="1440" fill="#ffffff"/>
+<g font-family="Arial, Microsoft YaHei, Noto Sans CJK SC, sans-serif">
+<text x="90" y="70" font-size="19" fill="#163b63" font-weight="700" text-anchor="start" letter-spacing="2">SYSTEM OVERVIEW</text>
+<text x="90" y="120" font-size="38" fill="#182330" font-weight="700" text-anchor="start" letter-spacing="0">Teacher scoring, from input to validation</text>
+<line x1="90" y1="148" x2="1510" y2="148" stroke="#182330" stroke-width="2"/>
+<text x="90" y="211" font-size="19" fill="#163b63" font-weight="700" text-anchor="start" letter-spacing="0">01  INPUT</text>
+<text x="800" y="209" font-size="31" fill="#182330" font-weight="700" text-anchor="middle" letter-spacing="0">Student candidate token IDs</text>
+<text x="800" y="250" font-size="26" fill="#596675" font-weight="400" text-anchor="middle" letter-spacing="0">Padded input IDs  /  attention mask</text>
+<line x1="360" y1="281" x2="1240" y2="281" stroke="#cbd3dc" stroke-width="2"/>
+<line x1="800" y1="282" x2="800" y2="316" stroke="#163b63" stroke-width="2"/>
+<path d="M793 309 L800 318 L807 309" fill="none" stroke="#163b63" stroke-width="2"/>
+<text x="90" y="360" font-size="19" fill="#163b63" font-weight="700" text-anchor="start" letter-spacing="0">02  TEACHER WORKER</text>
+<text x="800" y="359" font-size="31" fill="#182330" font-weight="700" text-anchor="middle" letter-spacing="0">TeacherFSDPWorker</text>
+<text x="800" y="400" font-size="26" fill="#596675" font-weight="400" text-anchor="middle" letter-spacing="0">FSDP2-wrapped Qwen2  /  normal forward lifecycle</text>
+<line x1="360" y1="430" x2="1240" y2="430" stroke="#cbd3dc" stroke-width="2"/>
+<line x1="800" y1="431" x2="800" y2="465" stroke="#163b63" stroke-width="2"/>
+<path d="M793 458 L800 467 L807 458" fill="none" stroke="#163b63" stroke-width="2"/>
+<text x="90" y="509" font-size="19" fill="#163b63" font-weight="700" text-anchor="start" letter-spacing="0">03  BACKBONE</text>
+<text x="800" y="507" font-size="31" fill="#182330" font-weight="700" text-anchor="middle" letter-spacing="0">Transformer backbone</text>
+<text x="800" y="547" font-size="26" fill="#596675" font-weight="400" text-anchor="middle" letter-spacing="0">Hidden states</text>
+<path d="M800 570 V600 M430 600 H1170 M430 600 V635 M1170 600 V635" fill="none" stroke="#163b63" stroke-width="2"/>
+<path d="M423 628 L430 637 L437 628 M1163 628 L1170 637 L1177 628" fill="none" stroke="#163b63" stroke-width="2"/>
+<text x="90" y="624" font-size="19" fill="#163b63" font-weight="700" text-anchor="start" letter-spacing="0">04  READOUT</text>
+<rect x="832" y="657" width="600" height="226" fill="#f4f7fa"/>
+<line x1="168" y1="657" x2="768" y2="657" stroke="#9aa7b5" stroke-width="3"/>
+<line x1="832" y1="657" x2="1432" y2="657" stroke="#163b63" stroke-width="3"/>
+<text x="194" y="711" font-size="30" fill="#182330" font-weight="700" text-anchor="start" letter-spacing="0">A0  Dense baseline</text>
+<text x="194" y="765" font-size="25" fill="#596675" font-weight="400" text-anchor="start" letter-spacing="0">Full LM head readout</text>
+<text x="194" y="808" font-size="25" fill="#596675" font-weight="400" text-anchor="start" letter-spacing="0">Materialize full N × V logits</text>
+<text x="858" y="711" font-size="30" fill="#163b63" font-weight="700" text-anchor="start" letter-spacing="0">A1  Memory-bounded readout</text>
+<text x="858" y="765" font-size="25" fill="#182330" font-weight="400" text-anchor="start" letter-spacing="0">Row-chunked LM head</text>
+<text x="858" y="808" font-size="25" fill="#182330" font-weight="400" text-anchor="start" letter-spacing="0">Per-chunk logsumexp  /  candidate gather</text>
+<text x="858" y="851" font-size="25" fill="#182330" font-weight="400" text-anchor="start" letter-spacing="0">Teacher Top-K  /  no full N × V logits retained</text>
+<path d="M430 886 V915 H800 M1170 886 V915 H800 M800 915 V947" fill="none" stroke="#163b63" stroke-width="2"/>
+<path d="M793 940 L800 949 L807 940" fill="none" stroke="#163b63" stroke-width="2"/>
+<text x="90" y="997" font-size="19" fill="#163b63" font-weight="700" text-anchor="start" letter-spacing="0">05  OUTPUT</text>
+<text x="800" y="995" font-size="31" fill="#182330" font-weight="700" text-anchor="middle" letter-spacing="0">Compact teacher outputs</text>
+<text x="800" y="1036" font-size="26" fill="#596675" font-weight="400" text-anchor="middle" letter-spacing="0">Candidate logprobs  /  teacher Top-K IDs</text>
+<text x="800" y="1076" font-size="26" fill="#596675" font-weight="400" text-anchor="middle" letter-spacing="0">Nested offsets  /  mask-aligned rows</text>
+<line x1="360" y1="1108" x2="1240" y2="1108" stroke="#cbd3dc" stroke-width="2"/>
+<line x1="800" y1="1109" x2="800" y2="1145" stroke="#163b63" stroke-width="2"/>
+<path d="M793 1138 L800 1147 L807 1138" fill="none" stroke="#163b63" stroke-width="2"/>
+<text x="90" y="1197" font-size="19" fill="#163b63" font-weight="700" text-anchor="start" letter-spacing="0">06  VALIDATION</text>
+<text x="800" y="1195" font-size="31" fill="#182330" font-weight="700" text-anchor="middle" letter-spacing="0">Worker-to-student validation path</text>
+<text x="800" y="1237" font-size="26" fill="#596675" font-weight="400" text-anchor="middle" letter-spacing="0">Reverse-KL consumer  /  student gradients</text>
+<text x="800" y="1277" font-size="26" fill="#596675" font-weight="400" text-anchor="middle" letter-spacing="0">Restricted final RMSNorm update</text>
+<line x1="90" y1="1340" x2="1510" y2="1340" stroke="#182330" stroke-width="2"/>
+<text x="90" y="1381" font-size="17" fill="#596675" font-weight="700" text-anchor="start" letter-spacing="1">MEMORY-BOUNDED TEACHER SCORING</text>
+</g></svg>

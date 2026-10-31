@@ -3,10 +3,8 @@ title: 显存预算约束的 Teacher Scoring
 subtitle: 受控稳定性、分配器预算下的容量与真实 Worker-to-Student 验证
 author: Jiacheng Yu
 edition: 2026 年 10 月 30 日 | 简体中文
-status: AI 辅助工程草稿；新增结果待 Human 审核
-footer: 草稿 - 待 Human 审核
+footer: 工程实验增补
 scope: 在 RTX 5070 Laptop 单 GPU 上，固定 Qwen2.5-0.5B 与 verl 源码，分别检验稳定性、容量和受限 Student 更新。
-history: 此前已审核的 c1ab1f4 中英文报告保持原样。本增补是新稿，不继承旧稿的人工审核状态。
 ---
 ## 1. 问题与执行契约
 
@@ -198,5 +196,3 @@ I1 补齐本地内存内的消费链。真实 Student 先生成一次候选，�
 - [verl PR #6920 固定源码](https://github.com/verl-project/verl/tree/87cd055e872f9fdd7b976fcd797a0934b6dba265)。
 - [固定 FSDP reverse-KL loss](https://github.com/verl-project/verl/blob/87cd055e872f9fdd7b976fcd797a0934b6dba265/verl/trainer/distillation/fsdp/losses.py)，Git blob `97d3ebf485a5ce9e1b1a435cce427d6d89284dc6`。
 - [Qwen2.5-0.5B-Instruct 模型快照](https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct/tree/7ae557604adf67be50417f59c2c2f167def9a775)。
-
-本增补的新增实验正文等待 Human 审核。旧 c1ab1f4 报告及其审核状态单独保留。

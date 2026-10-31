@@ -1,284 +1,146 @@
-% XeLaTeX + BibTeX; compile from the repository root into a separate output directory.
+% Compile from the repository root with XeLaTeX/BibTeX or the report build script.
 \documentclass[11pt,a4paper]{article}
 \usepackage{fontspec}
-\IfFileExists{C:/Windows/Fonts/times.ttf}{
-  \setmainfont{times.ttf}[Path=C:/Windows/Fonts/,BoldFont=timesbd.ttf,ItalicFont=timesi.ttf,BoldItalicFont=timesbi.ttf]
-}{\IfFileExists{/mnt/c/Windows/Fonts/times.ttf}{
+\IfFileExists{/mnt/c/Windows/Fonts/times.ttf}{
   \setmainfont{times.ttf}[Path=/mnt/c/Windows/Fonts/,BoldFont=timesbd.ttf,ItalicFont=timesi.ttf,BoldItalicFont=timesbi.ttf]
-}{\IfFontExistsTF{Times New Roman}{\setmainfont{Times New Roman}}{\setmainfont{Latin Modern Roman}}}}
+}{\IfFontExistsTF{Times New Roman}{\setmainfont{Times New Roman}}{\setmainfont{Latin Modern Roman}}}
 \setsansfont{Latin Modern Sans}
 \setmonofont{Latin Modern Mono}
 \tracinglostchars=3
 \usepackage[a4paper,margin=23mm,headheight=15pt]{geometry}
-\usepackage{amsmath,amssymb,mathtools,booktabs,tabularx,array,graphicx,xcolor,enumitem,fancyhdr}
+\usepackage{amsmath,amssymb,booktabs,tabularx,array,graphicx,xcolor,enumitem,fancyhdr}
 \usepackage[numbers,sort&compress]{natbib}
 \usepackage[unicode,hidelinks,breaklinks]{hyperref}
 \usepackage{xurl}
-\setlength{\parindent}{0pt}\setlength{\parskip}{0.45em}\setlength{\emergencystretch}{3em}
-\setlist{nosep,leftmargin=1.5em}\renewcommand{\arraystretch}{1.16}
+\definecolor{navy}{HTML}{163B63}
+\definecolor{slate}{HTML}{596675}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em}
+\setlength{\emergencystretch}{3em}
+\setlist{nosep,leftmargin=1.5em}
+\renewcommand{\arraystretch}{1.2}
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
 \newcommand{\code}[1]{{\small\nolinkurl{#1}}}
-\input{docs/reports/common-equations.tex}
-
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\small\color{slate} Memory-Bounded Teacher Scoring}
+\fancyhead[R]{\small\color{slate} TECHNICAL REPORT}
+\fancyfoot[C]{\thepage}
 
 \usepackage{xeCJK}
-\IfFileExists{C:/Windows/Fonts/simsun.ttc}{
-  \setCJKmainfont{simsun.ttc}[Path=C:/Windows/Fonts/,BoldFont=simhei.ttf]
-  \setCJKsansfont{simhei.ttf}[Path=C:/Windows/Fonts/,BoldFont=simhei.ttf]
-  \setCJKmonofont{simsun.ttc}[Path=C:/Windows/Fonts/]
-}{\IfFileExists{/mnt/c/Windows/Fonts/simsun.ttc}{
+\IfFileExists{/mnt/c/Windows/Fonts/simsun.ttc}{
   \setCJKmainfont{simsun.ttc}[Path=/mnt/c/Windows/Fonts/,BoldFont=simhei.ttf]
   \setCJKsansfont{simhei.ttf}[Path=/mnt/c/Windows/Fonts/,BoldFont=simhei.ttf]
-  \setCJKmonofont{simsun.ttc}[Path=/mnt/c/Windows/Fonts/]
-}{\IfFontExistsTF{SimSun}{
-  \setCJKmainfont{SimSun}[BoldFont=SimHei]\setCJKsansfont{SimHei}[BoldFont=SimHei]\setCJKmonofont{SimSun}
-}{\setCJKmainfont{Noto Serif CJK SC}\setCJKsansfont{Noto Sans CJK SC}\setCJKmonofont{Noto Serif CJK SC}}}}
-\renewcommand{\contentsname}{目录}\renewcommand{\refname}{参考文献}
-\renewcommand{\figurename}{图}\renewcommand{\tablename}{表}
+}{\IfFontExistsTF{SimSun}{\setCJKmainfont{SimSun}[BoldFont=SimHei]\setCJKsansfont{SimHei}}{\setCJKmainfont{Noto Serif CJK SC}\setCJKsansfont{Noto Sans CJK SC}}}
+\renewcommand{\refname}{参考文献}
+\renewcommand{\figurename}{图}
+\renewcommand{\tablename}{表}
 
-\hypersetup{pdftitle={显存预算约束的 Teacher Scoring：保留完整契约的 FSDP 接入与实验证据},pdfauthor={Jiacheng Yu},pdfsubject={AI 辅助技术草稿；新增内容等待 Human 审核}}
-\pagestyle{fancy}\fancyhf{}
-\fancyhead[L]{\small 显存预算约束的 Teacher Scoring}
-\fancyhead[R]{\small 待 Human 审核}\fancyfoot[C]{\thepage}
+\hypersetup{pdftitle={显存受控的教师评分},pdfauthor={Jiacheng Yu},pdfsubject={保留评分契约的 FSDP2 教师评分读出}}
 \begin{document}
 \hypersetup{pageanchor=false}
 \begin{titlepage}
-\vspace*{11mm}{\small\sffamily\bfseries AI 基础设施 / 实验技术报告}\par
-\vspace{14mm}{\LARGE\bfseries 显存预算约束的\\[2mm]Teacher Scoring\par}
-\vspace{6mm}{\large 保留完整契约的 FSDP 接入、分配器容量与真实 Worker-to-Student 证据\par}
+\vspace*{13mm}{\small\sffamily\bfseries\color{navy} AI INFRASTRUCTURE / 技术报告}\par
+\vspace{15mm}{\LARGE\bfseries 显存受控的\\[2mm]教师评分\par}
+\vspace{6mm}{\large 面向 verl FSDP2 Worker、保留评分契约的输出头读出\par}
 \vspace{9mm}\hrule\vspace{7mm}
-\begin{tabularx}{\linewidth}{@{}p{34mm}Y@{}}
+{\large\bfseries Peak allocated 降低 81.05\%}\par
+\vspace{1mm}在 8,192 个投影行上，完整 Worker 调用的稠密读出为 3,596.6 MiB，分块读出为 681.6 MiB。262,144 个候选 logprob 和 8,192 行有序教师 Top-$K$ 均与稠密参考逐值一致。
+
+\vspace{6mm}\begin{tabularx}{\linewidth}{@{}p{35mm}Y@{}}
 作者 & Jiacheng Yu\\
-版本 & 2026 年 10 月 30 日；简体中文\\
-文稿状态 & AI 辅助技术草稿；所有新增内容等待 Human 审核\\
-证据快照 & 基线 \code{0fd56a6} 与其后的 Worker 和 mask 验证\\
-已验证范围 & 单 GPU Qwen2/FSDP2；有界数值、容量与受限更新实验\\
+版本 & 2026 年 10 月 31 日；简体中文\\
+实验系统 & Qwen2.5-0.5B-Instruct、BF16、单 GPU、FSDP2 CPU offload\\
+读出条件 & $K=32$、每块 256 行、allocator fraction 0.50\\
+实验基线 & \code{ad395e94923bcf65fff4bc1eeb2e0e1505fd4f91}\\
 \end{tabularx}
-\par\vspace{9mm}\textbf{审核边界。} 本文是新报告，不继承旧 \code{c1ab1f4} 中英文报告的作者审核状态。旧报告及 10 月 30 日 Markdown/PDF 增补继续作为独立快照保留。第~\ref{sec:pending} 节记录后续有界 Worker 与 mask 验证及其测量范围。
-\vfill{\small 显存测量随 allocator 与执行范围报告。行分块已有先例；本文不声明新的 selected-logit 内核或普遍时延收益。}
+\vfill{\small 该百分比表示完整 Worker 调用中 PyTorch 分配器的 peak allocated，不代表整卡 VRAM 降幅。}\par
 \end{titlepage}
 \hypersetup{pageanchor=true}
 
 \section*{摘要}
-Teacher 即使只返回紧凑分数，也可能先分配完整 token×vocabulary logits。本实现把行分块前移到 Qwen2 LM Head 之前，保留 Student 候选 ID 上的全词表归一化 logprob 和 Teacher 自身 Top-$K$。适配器在普通外层 FSDP forward 内运行，保留模块 hooks 与共享参数；无显式预算且分块覆盖全部投影行时，使用原生 dense forward 回退。受控单 GPU 实验完成 384 次直接模型调用及 64 次真实 Worker 调用，没有复现先前 CUDA abort。在 PyTorch allocator fraction 0.25 下，offload 开启的 dense 路径在 1536 行成功、2048 行 OOM，chunked 执行到 32768 行，但同长度 dense 数值校验只到 8192。fraction 0.50 下，dense 在 8704 成功、9216 失败；更高预算的 dense 参考验证了 chunked 的 9216 行输出。真实 Worker 输出还保留了固定 loss、所检梯度和一次最终 RMSNorm AdamW 更新。后续真实 Worker 在 8192 行与同预算 Dense 一致，在 9216 行与较高预算 Dense 参考一致。无人工 fraction 的 1024 行实验测量显存，并未测容量上限；完整 RL 训练和 Ray 调度仍未覆盖。
-\tableofcontents\clearpage
+教师评分可能只返回紧凑分数，却仍为全部投影行和词表项生成 logits。本项目在正常 FSDP2 forward 内，将行分块前移至 Qwen2 LM Head 之前。每块计算学生候选 ID 上的全词表归一化分数和教师有序 Top-$K$，最终只保留紧凑输出。适配器可选启用，并保留固定版本 verl Worker 的共享输出头、模块 hooks 和输出布局。\cite{verl6920pinned}
 
-\section{问题动机与贡献边界}
-蒸馏消费者所需的信息不同：指定 logits、条件概率、全词表 logprob 和 Teacher Top-$K$ 是不同契约。返回 $NK$ 个数值的接口，内部仍可能执行和分配 $NV$ 投影。其中 $N$ 为实际经过 Head 的模型行数，$V$ 为词表大小，$K$ 为候选宽度；padding 行也计入 $N$。
+在 RTX 5070 Laptop GPU 上，所述 allocator fraction 下的 $N=8192$ 实验使 PyTorch peak allocated 降低 81.05\%。另一个直接 Worker 到 Student 的实验匹配了固定反向 KL 损失、所检梯度和一次受限的最终 RMSNorm 更新。GitHub CPU 回归工作流通过 171 项测试，取消选择两项完整 Trainer runtime 对照。结果属于单 GPU 实验性执行路径优化；时延数据仅作描述，不支持通用加速结论。
 
-逐行评分接口与索引 selected-logit 原语已经处理其中部分问题。此前源码调查记录了相关 SGLang、vLLM 接口及 IndexedLogits，这些观察仍限定在当时的固定版本。\cite{sglang38119,vllm56984,indexedlogits,omnilens2026} 本报告的工程对象更具体：在固定 verl 的 Qwen2/FSDP 执行中，限制 logits tile 的分配，同时保留完整 Teacher 契约。行分块是已有方法；此前仅计算 Student 候选 logits 的融合方案，对完整契约仍为 \textbf{NO-GO}。
+\section{工程问题}
+令 $N$ 为投影模型行数、$V$ 为词表大小、$K$ 为每行候选数。稠密输出头先生成 $N\times V$ logits，而响应只包含 $O(NK)$ 个值与 ID。候选集内归一化会改变评分契约：消费者需要候选 token 的全词表归一化 logprob，也需要教师自身的 Top-$K$。
 
-目标为 \href{https://github.com/verl-project/verl/tree/87cd055e872f9fdd7b976fcd797a0934b6dba265}{verl PR \#6920 的固定版本}\cite{verl6920pinned} \code{87cd055e872f9fdd7b976fcd797a0934b6dba265}。补丁显式启用，关闭时保留上游分支。源码观察及本地运行不代表上游已接受或合并。
+行分块是已有方法；本项目的工作重点是将它接入真实 Worker，并保持评分和消费者接口。候选 logits 实现及逐行评分接口均有已有工作。\cite{indexedlogits,sglang38119}
 
-\section{完整评分与消费契约}
-对第 $t$ 行，隐状态为 $h_t$，输出头权重为 $W$、bias 为 $b$，候选支持集为 $C_t$：
-\ScoreEquations
-返回值是 $\ell^{\mathrm{full}}_{t,i}$，而非 $\ell^C_{t,i}$；另一输出是 Teacher 对整个词表的 Top-$K$。通常不能从选中 logits 重建全词表归一化分母，也无法据此确定 Teacher Top-$K$。因此，只投影 Student 候选不能替换当前两字段接口。
+\clearpage
+\section{系统概览}
+\begin{center}
+\includegraphics[width=0.98\linewidth,height=0.72\textheight,keepaspectratio]{docs/architecture/system-overview.zh-CN.png}
+\end{center}
+{\small\color{slate} 图 1：稠密和行分块读出共用教师执行路径与紧凑输出契约；最后一层表示独立的验证实验。}
 
-上述公式中的 $C_t$ 表示数学支持集。实际接口承载 $[B,T,K]$ 形状的有序 int64 ID，允许重复 ID；gather 后的分数必须保留其顺序与重复次数。候选 ID 已经指向因果 logits 行，适配器不额外位移，也不改变温度。
+\clearpage
+\section{方法与实现}
+\subsection{评分契约}
+对于隐藏状态行 $h_t$、LM Head 权重 $W$、偏置 $b$ 和候选 $i$，返回分数为
+\begin{equation}
+z_{t,i}=h_t^{\mathsf T}W_i+b_i,\qquad
+\log p_{t,i}=z_{t,i}-\log\!\sum_{j\in\mathcal V} e^{z_{t,j}}.
+\end{equation}
+归一化项覆盖完整词表。候选 ID 有序且允许重复，返回值保留其顺序；Worker 还返回完整词表上的教师 Top-$K$ ID，并保持嵌套张量 offset 和有效行次序。
 
-修改后的 Worker 仍只返回 \code{teacher_on_student_logp} 与 \code{teacher_topk_ids}，为 detached CPU nested tensors，保持原有效行顺序及 offsets。候选使用实际 prepared attention mask 散射至 padded 行，再用同一 mask 还原。多序列 padded 输入在此布局路径内支持；多序列 packed/remove-padding 注意力，在真实 varlen 执行验证前明确拒绝。
+\subsection{FSDP2 内的分块读出}
+适配器在 FSDP 封装之前安装，保留参数对象以及共享的输入／输出权重。请求通过正常的外层 FSDP 模块调用进入；主干网络运行一次，随后将隐藏状态按最多 $B$ 行一块送入 LM Head 模块。每块 logits 转为 FP32，计算 log-sum-exp 和候选 gather，并保留教师 Top-$K$ ID；各块归约后丢弃，不拼接完整 $N\times V$ 结果。
 
-作为目标区别的数学背景，固定支持集上的条件反向 KL 为：
-\KLEquations
-它说明条件重归一化后共同全词表分母会相消，并不表示所有 OPD loss、clamp 和 mask 都等价。条件 KL 忽略支持集总质量差异及尾部分布：\Decomposition
-第~\ref{sec:i1} 节实际调用固定 \code{compute_reverse_kl_topk} 源码，保留其归一化与 clamps，没有用上述简式替换真实消费者。此前调查也区分了这一目标与其他 OPD reward 或 subset-loss 构造。\cite{verl6676,opdauthorcode,subsetkl}
+同时存活的 logits 块随 $BV$ 而非 $NV$ 扩展；紧凑输出仍随 $NK$ 扩展，主干网络、模型和 FSDP 分配也仍然存在。该方法改变内存分配方式，并不消除全词表投影计算。当没有显式预算且单块覆盖全部行时，实现回退到原生稠密 forward；显式读出预算是该部分开销的估算，并非整卡硬限制。
 
-\section{FSDP 执行与受限读出}
-\subsection{模块与 hooks 生命周期}
-适配器在 FSDP 包装之前安装于普通、未包装的 \code{Qwen2ForCausalLM}，保留参数对象、模块树及输入输出共享权重。评分请求经 \code{self.engine.module(...)} 进入普通外层 FSDP forward。Backbone 与最终 norm 执行一次，随后将展平 hidden rows 分块送入 \code{self.lm_head(tile)}。每块都调用模块本身，使其 pre/post hooks 仍然运行；直接读取权重作矩阵乘法会绕开该生命周期。
+\subsection{填充与消费者对齐}
+候选 ID 使用准备好的 attention mask 散射到填充后的模型行，紧凑输出再恢复为有效行次序。适配器不对候选 ID 额外施加因果位移。消费者验证在相应预测位置使用 response mask，并将真实 Worker 输出送入固定版本的损失函数。
 
-每个至多 $B$ 行的 tile 产生 logits，再转为 FP32 做全词表 log-sum-exp 和 candidate gather；logprob 转回 logits dtype，同时保存 Teacher Top-$K$ ID。各块及时释放，不拼接完整 logits。紧凑输出仍占 $O(NK)$；backbone hidden state、模型与 FSDP 分配仍属于完整 forward。
+\clearpage
+\section{实验结果}
+\subsection{实验设置}
+最终矩阵使用 Qwen2.5-0.5B-Instruct、BF16、单张 RTX 5070 Laptop GPU、PyTorch 2.14.1+cu130、FSDP2 CPU offload、SDPA、$K=32$、$B=256$ 和 allocator fraction 0.50。输入和候选 ID 均为合成数据。每个长度按 Dense--Chunked--Chunked--Dense 顺序运行四个独立进程；每进程预热一次、测量五次。$N$ 表示投影行数。
 
-已验证目标为 tied-embedding Qwen2、普通 dense linear head、BF16、world size one、eval/no-grad 与无 KV cache。适配器拒绝不支持的多 rank、untied head、LoRA、量化/QAT、Liger/fused alternative forward 和 sequence parallel。存在 FP32 代码路径不等于已有 FP32 GPU 证据；FSDP1、TP 及多 GPU 仍为 \code{NOT_RUN}。
-
-\begin{figure}[htbp]\centering
-\includegraphics[width=0.98\linewidth,height=0.66\textheight,keepaspectratio]{docs/architecture/memory-bounded.zh-CN.png}
-\caption{显存受限 Teacher 执行与独立的直接 Worker-to-Student 验证路径。数值及运行范围由各实验章节限定；图示不代表尚未执行的调度或训练路径已经通过。}\label{fig:arch}
-\end{figure}
-
-\subsection{CPU offload 与 dense fallback}
-FSDP2 CPU offload 改变参数驻留，且可能主导完整 forward 时延；它不取消普通 FSDP forward 边界。受控实验直接检查 root/decoder 的 offload policy，而非仅根据命令行开关推断。
-
-没有显式 head budget 且选中 tile 覆盖全部模型行时，走 \code{dense_full_row_fallback}：先完成原生 dense forward，再在 FSDP 返回后运行原 gather/reduction。若在参数仍驻留时归约完整 tile，峰值反而可能上升；早期 $N=512$、chunk=512 的全行 tile 使绝对峰值增加约 33.7\%，由此形成原生回退策略。任何显式 head budget 都禁用这一自动回退，避免把请求的估计预算默默替换成无界 dense 执行。错误及 OOM 向外传播，不重试外层 forward。
-
-\subsection{预算估计及约束范围}
-令 $s$ 为 logits 每元素字节数，$\gamma=1.25$ 为默认安全因子，$H$ 为请求的 head 字节预算。实现中的估计为：
-\begin{align}
-M_{\mathrm{compact}}&=NK(s+8),\\
-m_{\mathrm{row}}&=\left\lceil\gamma\,[V(s+8)+24K]\right\rceil,\\
-\widehat M(B)&=M_{\mathrm{compact}}+Bm_{\mathrm{row}},\\
-B&=\min\!\left(N,B_{\mathrm{requested}},\left\lfloor\frac{H-M_{\mathrm{compact}}}{m_{\mathrm{row}}}\right\rfloor\right).
-\end{align}
-该式包含紧凑输出、logits tile、最多两个 FP32 词表工作张量及保守 Top-$K$ bookkeeping。若紧凑输出加一行估计都放不下，在 forward 前拒绝。预算只约束该读出估计，不覆盖完整模型、FSDP 参数驻留、碎片、其他进程及所有 CUDA workspace。全词表投影计算量仍约为 $2NVd$；缩小 tile 是分配与更多 Head 调用之间的取舍。
-
-早期独立的 $N=1024,K=32$ FSDP2 预算 probe，在 64/128/256 MiB 预算下选出 35/70/141 行；读出 allocated 增量约为 51.03/101.75/204.64 MiB，完整 forward 峰值约 552.28 MiB。它们只校准该工作负载。Head 估计与 \code{torch.cuda.set_per_process_memory_fraction} 约束的是不同数量。
-
-\section{实验设计与执行身份}
-\begin{table}[htbp]\centering\small
-\begin{tabularx}{\linewidth}{@{}p{30mm}Y@{}}\toprule
-项目 & 已记录的固定条件\\\midrule
-GPU & NVIDIA RTX 5070 Laptop；8151 MiB\\
-模型 & Qwen2.5-0.5B-Instruct；BF16；共享 embedding\\
-模型版本 & \code{7ae557604adf67be50417f59c2c2f167def9a775}\\
-框架 & PyTorch 2.14.1+cu130；Transformers 5.19.0\\
-分布式路径 & FSDP2，world size one；offload 条件分别记录\\
-输入 & 合成 tokenized sequences 与固定候选；无采样 RL 轨迹\\
-证据来源 & 双语 10 月 30 日阶段增补及此前有界适配器记录\\\bottomrule
-\end{tabularx}\caption{已记录实验的执行身份。}\label{tab:identity}
-\end{table}
-容量点使用独立新进程、SDPA、$K=32,B=256$ 与单条序列；factorial fixture 则为 padded 64/37、$K=8,B=16$ 和 eager attention，两者不能混作同一工作负载。输出签名覆盖 shape、dtype、offsets 与 bytes；容量比较检查所有保存的紧凑候选及 Teacher Top-$K$ 集合。若只有紧凑输出，无法证明 full-logits 边界 tie，比较器保留未决 tie/mismatch。
-
-\subsection{Worker 对齐的 buffer 构建}
-最初直接模型与真实 Worker 存在数值构建差异。固定 Worker 显式执行 \code{model.to(dtype)}，将 Qwen2 rotary frequency buffers 从 FP32 转为 BF16；原直接路径保留 FP32。对齐这一步后，31/32 个 frequency 值改变，所测 fixture 的 808 个候选值及 101 行 Teacher Top-$K$ 恢复逐值一致。它解释这一直接/Worker 输出差异，不解释 CUDA abort。早期直接模型测量仍限定于其原始 buffer 策略。
-
-\section{S1：受控稳定性}
-直接模型 factorial 交叉 Dense/Chunked 与 CPU offload 开/关四种条件，每种三个新进程，每进程两次 warmup 与 30 次计数调用。实际 root/decoder FSDP policies 与请求一致，每次完成调用都核对同一紧凑参考。
-\begin{table}[htbp]\centering\small
-\begin{tabularx}{\linewidth}{@{}YYrr@{}}\toprule
-入口 & 条件 & 新进程数 & 完成调用\\\midrule
-直接 Qwen/FSDP2 & Dense，offload 开 & 3 & 96\\
-直接 Qwen/FSDP2 & Chunked，offload 开 & 3 & 96\\
-直接 Qwen/FSDP2 & Dense，offload 关 & 3 & 96\\
-直接 Qwen/FSDP2 & Chunked，offload 关 & 3 & 96\\
-真实 verl Worker & Dense，offload 开 & 1 & 32\\
-真实 verl Worker & Chunked，offload 开 & 1 & 32\\\bottomrule
-\end{tabularx}\caption{完成次数包含 warmup：每个直接模型条件为 $3(2+30)=96$。}\label{tab:s1}
-\end{table}
-直接模型进程完成 384 次检查，另两个真实 Worker 进程完成 64 次并核对每次 hash 和 offsets。首次 CUDA \code{unknown error} 在此有界集合未复现；根因及同期 WSL dxg 观察仍未知。重复运行只证实该有限集合，不能据此认定长期生产稳定性。
-
-\section{明确 allocator fraction 下的容量}
-fraction 0.25 在此设备上对应名义 2,129,510,400 字节 PyTorch 缓存 allocator 限额，不是整设备硬隔离。边界扫描以 512-token 粒度收窄已测区间；成功/OOM 格点不证明单调性或精确最大值。
-\begin{table}[htbp]\centering\small
-\begin{tabularx}{\linewidth}{@{}p{15mm}p{15mm}YYY@{}}\toprule
-Fraction & Offload & Dense 成功 / 下一 OOM $N$ & Chunked 最大已测可执行 $N$ & Chunked 的 dense 校验到达 $N$\\\midrule
-0.25 & 开 & 1536 / 2048 & 32768 & 8192\\
-0.25 & 关 & 512 / 1024 & 16384 / OOM 16896 & 4096\\
-0.50 & 开 & 8704 / 9216 & 32768 & 9216\\\bottomrule
-\end{tabularx}\caption{已测格点及独立的数值等价边界。}\label{tab:capacity}
-\end{table}
-fraction 0.25 下，offload 开启组在 $N=1024,2048,4096,8192$ 通过紧凑比较，关闭组在 $N=2048,4096$ 通过，logprob 最大差均为零。更长 Dense 参考使用 fraction 0.55；参考在开启组 $N=12288$、关闭组 $N=8192$ OOM。比较器补齐 shape/签名验证后，六组均重新比较并通过，原记录保留。
-
-因此，开启组 8192/1536 是 5.33 倍已观察长度比；32768 仍是无完整同 $N$ Dense 正确性参考的执行容量证据。fraction 0.50 下，Chunked 完成 8192/16384/24576/32768；8192 同预算输出一致，fraction 0.55 的 9216 行 Dense 与 fraction 0.50 Chunked 的 294,912 个候选值及全部 9216 行 Top-$K$ 集合一致。该已验证格点比 Dense 最大已测成功 8704 多 512 tokens（5.88\%）。更高预算参考提供正确性证据，不构成同预算容量比较。
-
-\section{M1 与 T1：显存口径和描述性时延}
-\subsection{Allocator 峰值与整设备观察}
-\begin{table}[htbp]\centering\small
-\begin{tabularx}{\linewidth}{@{}Yrrrr@{}}\toprule
-指标，MiB & \multicolumn{2}{c}{$N=1024$，M1} & \multicolumn{2}{c}{$N=8192$，fraction 0.50}\\
- & Dense & Chunked & Dense & Chunked\\\midrule
-Forward allocated 峰值 & 1517.09 & 665.31 & 3596.83 & 681.66\\
-含 load/wrap 的进程 allocator 峰值 & 1517.09 & 958.48 & 3596.83 & 958.48\\
-Forward reserved 峰值 & 1748 & 1572 & 3846 & 1572\\
-整设备 used 采样最大值 & 3429 & 3258 & 5504 & 3229\\
-设备采样次数（非 MiB） & 40 & 30 & 36 & 33\\\bottomrule
-\end{tabularx}\caption{Offload 开启的独立新进程比较。100 ms 整设备采样包含其他进程，也可能漏掉瞬时峰值。}\label{tab:memory}
-\end{table}
-较低的调用峰值不代表加载/包装分配消失；reserved 也依赖 allocator 历史。$N=1024$ 两个采样最大值相差 171 MiB，并非精确净进程 VRAM 收益。fraction 0.50 的 Dense OOM 时，CUDA 仍报告约 3401 MiB 空闲，体现 allocator 限额而非整卡耗尽。本版没有无人工 fraction 的长输入 Worker 容量结果。
-
-\subsection{Worker 对齐的完整 forward 配对时延}
-T1 使用 $N=1024,K=32,B=256$。各 offload 条件含六组 A/A 和八组交错 ABBA/BAAB，每个 A/B 标签 16 个样本。计时覆盖直接模型/FSDP 完整 forward 至紧凑 CPU 副本，排除加载及正确性校验。
-\begin{table}[htbp]\centering\small
-\begin{tabularx}{\linewidth}{@{}p{15mm}Yrr@{}}\toprule
-Offload & 指标 & A0 Dense & A1 Chunked\\\midrule
-开 & Allocated 峰值 MiB & 1517.09 & 664.97\\
-关 & Allocated 峰值 MiB & 2467.26 & 1615.48\\
-开 & perf-counter p50 / p95 ms & 192.580 / 193.953 & 192.978 / 198.150\\
-开 & raw-clock p50 / p95 ms & 190.491 / 191.858 & 190.926 / 196.081\\
-关 & perf-counter p50 / p95 ms & 87.241 / 114.847 & 78.709 / 116.953\\
-关 & raw-clock p50 / p95 ms & 87.567 / 115.198 & 78.986 / 117.407\\\bottomrule
-\end{tabularx}\caption{采用 Worker 对齐 buffer cast 的直接模型配对记录。}\label{tab:timing}
-\end{table}
-该口径下 allocated 分别下降 56.17\%（开）和 34.52\%（关）；候选最大差均为零，全部 1024 行 Teacher Top-$K$ 集合一致。关闭 offload 的进程中，30/32 个 A/B 和 12/12 个 A/A 样本的 CUDA Event 长于包围它的 perf-counter 区间。早期运行也出现主机时钟及实验阶段漂移，原因未解。因此时延只作描述，不声明普遍加速，也不把两个独立 offload 进程当作生产性能排名。
-
-\section{I1：真实 Worker 输出进入受限 Student 更新}\label{sec:i1}
-真实 Qwen Student 生成一次候选，随后两个固定版本的真实 \code{TeacherFSDPWorker} 顺序执行 Dense 回退与 Chunked。它们当前返回的内存内 CPU nested TensorDict 值散射回原 padded Student 行，直接送入 \code{compute_reverse_kl_topk}；没有以记录的 JSON Teacher 数值替代。
-
-两条序列的 offsets 为 $[0,23,45]$，padded 模型行数为 46，$K=8$，激活响应预测行数为 25。Student 先按 0.8 温度缩放，再 log-softmax、Top-$K$；Teacher 温度为 1。候选仍位于原 logits 行，只有 response mask 做 next-token 对齐。两条路径恢复相同最终 RMSNorm 权重和新的 AdamW 状态，学习率 0.01、weight decay 为零。Teacher 保持 detach；保留 support normalization、logprob 下限 $-10$、token loss 非负截断与最大 loss 截断 10。
-\begin{table}[htbp]\centering\small
-\begin{tabularx}{\linewidth}{@{}Yrr@{}}\toprule
-观察量 & Dense Worker & Chunked Worker\\\midrule
-Masked scalar loss & 0.0216006283 & 0.0216006283\\
-最终 RMSNorm 梯度 L2 & 0.0124774044 & 0.0124774044\\
-非零梯度元素 & 896 & 896\\
-改变的 BF16 参数值 & 1 & 1\\
-参数更新 L2 & 0.0099792480 & 0.0099792480\\\bottomrule
-\end{tabularx}\caption{真实 Worker 输出驱动的一次最终 RMSNorm AdamW 更新。}\label{tab:i1}
-\end{table}
-本 fixture 的 360 个候选值、Teacher Top-$K$、mass、overlap、token losses、6,989,056 个 Student logits 梯度元素、896 个 RMSNorm 梯度元素及更新结果逐值一致。检查了 outer/head hooks 正常完成、Teacher 无梯度，以及两个顺序 Worker Python 对象均被回收。证据覆盖本地 Worker-to-loss-to-受限更新；Ray 调度、完整 Trainer、全参数优化与 RL step 仍为 \code{NOT_RUN}。
-
-\section{负结果与证据解释}
-最初 selected-logit 提案不满足全词表归一化加 Teacher Top-$K$；早期全行 chunk 增加完整峰值，推动了显式原生回退策略。首次 CUDA abort 虽未在受控集合重现，根因仍未知。Buffer cast 解释一个直接/Worker 数值差异，不能用于解释该 abort。
-
-早期项目消费者在两个梯度分支上分别把 BF16 Student logprob 转为 FP32，标量 loss 虽与上游一致，RMSNorm 与 logits 梯度的相对 L2 差异却约为 1.07\% 和 1.80\%。按上游图结构复用同一次 FP32 转换后，该 fixture 的差异消失。保留这一负结果，是为了说明必须核对梯度和更新，不能只接受标量 loss 一致。
-
-早期样本在 WSL 临时存储清理后丢失，没有重建成历史事实；此处引用后续有记录运行。归档矩阵曾把全行 Head 调用误标为避免完整 logits，实际形状与标签相反，当前脚本已修正。超出 Dense 参考上限的更长 Chunked 结果，数值等价仍为 \code{UNKNOWN}。退出码或有限输出不替代完整数值及训练验收。
-
-\section{真实长序列 Worker、自然分配与 response mask 验证}\label{sec:pending}
-后续实验均以新进程调用实际固定 \code{TeacherFSDPWorker}：共享权重 Qwen2 BF16、FSDP2 CPU offload、SDPA、$K=32$、行块 $B=256$。文本和候选 ID 为合成输入。每次调用记录实际输入、attention mask、position ID、offset、外层/骨干/输出头 hooks 和完整 CPU nested 输出。长度 64/37 的两个短进程覆盖真实 padding，3232 个候选 logprob 与 101 行有序 Teacher Top-$K$ 均一致。长序列为单条因果序列，不代表长多序列 padding 已获验证。
-
-\begin{table}[htbp]\centering\small
-\begin{tabularx}{\linewidth}{@{}Yrrrr@{}}\toprule
-Worker 条件 & \multicolumn{2}{c}{Allocated 峰值，MiB} & \multicolumn{2}{c}{Reserved 峰值，MiB}\\
- & Dense & Chunked & Dense & Chunked\\\midrule
-8192，均为 fraction 0.50 & 3596.638 & 681.630 & 3844 & 866\\
-9216，Dense 0.55 / Chunked 0.50 & 3893.700 & 683.962 & 4144 & 884\\
-1024，无人工 fraction，A/A 与 B/B & 1517.071 & 665.306 & 2644 & 1124\\\bottomrule
-\end{tabularx}\caption{独立进程的完整 Worker 调用 allocator 峰值。9216 的 Dense 0.55 只作正确性参考，不构成同预算容量比较。}\label{tab:worker-release}
-\end{table}
-
-$N=8192$ 时，262,144 个候选 logprob 与全部 8192 行有序 Teacher Top-$K$ 完全一致；$N=9216$ 的跨预算对照中，294,912 个候选及全部 9216 行有序 Top-$K$ 完全一致。每个长序列条件只有一次冷调用，冻结 BF16 容差也通过；两个长度的 offsets 均为 $[0,N]$。这不证明 32768 行相对 Dense 正确，也不代表完整 Trainer 运行。
-
-未调用 \code{set_per_process_memory_fraction} 的 $N=1024$ 对照使用 ABBA 顺序的四个新进程，各有一次预热和三次计数调用；每个进程记录的实际 fraction 均为 1.0。A/A、B/B 和 A/B 的紧凑输出及有序 Top-$K$ 一致。Dense 计数样本的 perf-counter 范围为 175.754--200.623 ms，Chunked 为 161.573--191.955 ms；部分样本的主机时钟存在分歧，因此只描述该小样本，不声明加速。100 ms 全设备最大采样分别为 Dense 两进程 4990/5120 MiB、Chunked 两进程 3584/3332 MiB，包含其他进程且可能漏峰。这里没有测试无人工 fraction 的容量上限。
-
-固定 Trainer 的指标包装先按 response 行筛选，再汇总 mass、loss 范围和 overlap；overlap advantage 还要求该行 overlap 大于零。本地诊断采用同一规则并保留原始逐 token 值。CPU 回归将实际固定 Trainer 函数与手算结果比较，并覆盖 prompt/padding 极值或 NaN 和零 overlap；原 Loss 与梯度语义不变。此前 I1 记录的 CPU 重放保留 padding 行 \code{teacher_mass=8.0}，但在统计中排除它：25 个 response 行的 Teacher mass 均值为 0.732026、最大值为 0.999786。此重放不是新增 GPU 训练步骤。
-
-开始时两次尝试因预登记的空闲显存门槛未满足而为 \code{NOT_RUN}；一次 CPU 依赖导入失败后，在 GPU 执行前修正了 runner。十个完成的 Worker 进程均记录设备采样无失败。后续 probe 修订在设备观测缺失时将实验标为失败，同时保留已完成的 Worker 输出；实际运行源码及 SHA-256 与原始测量一起保留。该错误处理修正只做 CPU 回归，不改写已记录运行。
-
-\section{最终有界 Worker 对照}
-最终矩阵使用固定 Worker 和 Qwen2.5 BF16 fixture，$K=32$、SDPA、FSDP2 CPU offload、allocator fraction 0.50。$N=1024,4096,8192$ 各按 Dense--Chunked--Chunked--Dense 顺序运行四个独立进程；每进程一次首次调用预热及五次计数。包含预热与分块大小实验在内的 96 份紧凑输出均重新读取，并与同长度 Dense 参考比较；本矩阵的候选 logprob 和有序 Teacher Top-$K$ 全部逐值一致。
-
-\begin{table}[htbp]\centering\small
-\begin{tabularx}{\linewidth}{@{}rYrrrr@{}}\toprule
-$N$ & 路径 & Alloc. MiB & Reserv. MiB & p50 ms & p95 ms\\\midrule
+\begin{center}\small
+\begin{tabular}{@{}rlrrrr@{}}\toprule
+$N$ & 模式 & Alloc. MiB & Reserved MiB & p50 ms & p95 ms\\\midrule
 1024 & Dense & 1517.1 & 2644 & 210.4 & 288.0\\
 1024 & Chunked & 665.3 & 1124 & 159.4 & 187.0\\
 4096 & Dense & 2409.4 & 2944 & 322.3 & 414.4\\
 4096 & Chunked & 672.3 & 1130 & 318.8 & 327.5\\
 8192 & Dense & 3596.6 & 3846 & 570.8 & 599.6\\
 8192 & Chunked & 681.6 & 1126 & 626.3 & 944.6\\\bottomrule
-\end{tabularx}\caption{逐次 PyTorch allocator 峰值及预热后的同步 Worker 耗时；$B=256$。每种路径及长度有两个进程、10 个计数样本；分位数使用线性插值。}\label{tab:final-matrix}
-\end{table}
-
-\begin{figure}[htbp]\centering
-\includegraphics[width=\linewidth]{docs/figures/worker-memory-timing.pdf}
-\caption{实测 allocator 峰值和描述性 Worker 耗时。黑色标记为 PyTorch reserved 峰值，不是整卡显存。}\label{fig:final-memory}
-\end{figure}
-
-$N=8192$ 时，该 Worker 调用范围的 allocated 峰值下降 81.05\%。同一 allocator fraction 下，Dense 在 8704 成功、9216 OOM，Chunked 在 16384 与 32768 成功。这些是已测点，不证明精确最大长度或整卡耗尽；32768 尚无同长度 Dense 真值。进程开始与结束的设备快照不构成完整设备峰值测量。
-
-\begin{figure}[htbp]\centering
-\includegraphics[width=\linewidth]{docs/figures/worker-chunk-tradeoff.pdf}
-\caption{分块大小对照。256 行使用两个进程、10 个样本；128 和 512 行各使用一个进程、五个样本。}\label{fig:chunk-tradeoff}
-\end{figure}
-
-\begin{samepage}
-时延只作描述：$N=1024$ Dense 两个进程的中位数为 229.2 和 158.0 ms，分块实验中有样本的两种主机时钟相差 8.33\%。此前 $N=8192$ 的一组冷调用为 Dense 3382.176 ms、Chunked 8756.047 ms；同步计时覆盖至 nested CPU 返回，并包含诊断 hooks 与采样；单次观察不能证明稳定变慢。首次 CUDA 错误与时钟分歧仍未归因，不声明通用加速。另外的 $N=4096$ 单调用 profiler 中，Dense / Chunked 分别记录 97 / 112 次 \code{aten::mm}（self CUDA 88.8 / 103.6 ms）、1 / 16 次 \code{aten::topk}（18.0 / 19.7 ms）以及各 290 次锁页内存到设备拷贝（设备事件合计 74.9 / 73.3 ms）。矩阵乘法、传输与归约均构成观察到的工作；这些类别可能重叠或嵌套，且 profiler 引入开销，不能将时长相加当作关键路径或无插桩延迟。\par
-\end{samepage}
-
-既有真实 Worker-to-Student 实验比较了固定反向 KL loss、梯度及受限 RMSNorm 更新；新增 CPU 重放在每个长度抽取 16 行，比较固定上游 loss 和 Student logits 梯度，候选为合成 ID。这不是实际 Student 轨迹或完整 RL 训练。
-
-\section{复现入口与技术判断}
-独立干净 scoring 检出以 \code{0273017} 为基准并加入包导入修复；新建 Python 3.12 环境从 105 项哈希锁安装依赖。固定模型单独下载并核对哈希后，真实 Dense 与 Chunked N=1024 Worker 的 32,768 个候选值和 1024 行有序 Top-K 完全一致。该干净检出在 CUDA 可用时通过 195 项测试；包含采样器回归的最终工作树通过 199 项。此前依赖和导入失败保留在私有实验证据中。公开的 \code{results/worker-evidence-manifest.json} 用 SHA-256 绑定原始工件；原始证据包保存在私有项目工作区。\par
-
-
-源码基线为 \code{0fd56a618800b5298d8c45529dda675f910c6e47}；后续 Worker probe 与 mask 回归位于包含本报告的版本。原始记录绑定实际测量时所用 probe 的源码字节。固定 loss 为 \href{https://github.com/verl-project/verl/blob/87cd055e872f9fdd7b976fcd797a0934b6dba265/verl/trainer/distillation/fsdp/losses.py}{真实 verl FSDP distillation loss}，Git blob 为 \code{97d3ebf485a5ce9e1b1a435cce427d6d89284dc6}。原始测量附模型与 tokenizer 哈希、命令参数和源码身份。
-
-主要入口包括 \code{scripts/long_worker_probe.py}、\code{scripts/factorial_teacher_probe.py}、\code{scripts/compare_capacity_outputs.py}、\code{scripts/full_teacher_benchmark.py} 和 \code{scripts/worker_to_student_step.py}。证据标识包括 \code{S1_SUMMARY.json}、\code{capacity_runner.jsonl}、\code{compare_validated_summary.json}、\code{compare_on_n9216.json}、\code{T1_worker_aligned_on/off.json} 与 \code{worker_to_student_01.json}。前述表格据双语 Markdown 阶段增补转录；上节的新结果来自记录的 Worker 调用与 CPU mask 回归。
-
-可支持的判断是：在所述单 GPU 环境中，保留完整评分契约的受限读出具有实测 allocator 容量收益，并完成了真实受限消费者更新。FP32 GPU、FSDP1、TP/多 GPU、packed varlen、LoRA/量化/QAT、Ray 传输、代表性 RL 轨迹、全模型训练和生产稳定性仍未验证；普遍时延收益、精确整设备 VRAM 节省及训练质量提升未获证实。全部新增正文继续保持 AI 辅助、等待 Human 审核。
+\end{tabular}\par\vspace{2mm}
+\end{center}
+{\small\color{slate} 表 1：逐次调用的 PyTorch 分配器峰值和同步预热 Worker 耗时；每组 p50/p95 汇总十次测量。}
+\begin{center}\includegraphics[width=\linewidth]{docs/figures/worker-summary.png}\end{center}
+{\small\color{slate} 图 2：Peak allocated 和 p50 至 p95 的耗时范围；reserved 数值见表 1。}
 
 \clearpage
+\section{正确性与结果解释}
+$N=8192$ 时，262,144 个候选 logprob 和 8,192 行有序教师 Top-$K$ 均与 Dense 参考逐值一致。最终矩阵和分块大小实验保存的 96 份紧凑输出均已重新读取，并与同长度 Dense 参考比较；对照包括输出身份、形状和 offset。
+
+$N=8192$ 时，peak allocated 从 3,596.6 MiB 降至 681.6 MiB，降幅为 81.05\%。这是逐次调用的 PyTorch 分配器测量，并非整设备 VRAM 估计。同一 fraction 下，Dense 在 8,704 行成功、9,216 行达到分配器 OOM；Chunked 在已测最大点 32,768 行运行成功，但该点没有同长度 Dense 正确性参考。
+
+同步计时包含诊断 hooks 和嵌套输出返回 CPU 的过程。8,192 行时 Dense 的 p50/p95 为 570.8/599.6 ms，Chunked 为 626.3/944.6 ms。进程波动和主机时钟差异限制了时延解释；这些结果不支持通用加速结论。
+
+\subsection{Worker 到 Student 的验证}
+在独立的双序列实验中，真实 Dense 和 Chunked Worker 输出进入固定版本的反向 KL 消费端，损失、学生 logits 梯度、最终 RMSNorm 梯度以及一次受限 AdamW 更新均一致。该实验使用 $K=8$、25 个有效响应预测行，只更新学生最终 RMSNorm 权重。早期实验中标量损失一致却出现梯度差异；将转换计算图与固定消费者对齐后，该测试输入中的差异消失。这是直接集成验证，不等于完整 RL 训练。
+
+\section{当前范围与后续工作}
+已测路径覆盖单 GPU FSDP2 下使用共享输出头的 Qwen2。下一阶段将扩展模型覆盖，支持 packed 变长输入，验证 FSDP1 与多 GPU／张量并行，并接入端到端 RL Trainer。早期仅计算 selected logits 的融合方案对完整评分契约仍为 NO-GO；项目历史结果保留了相应负结果。
+
+\clearpage
+\section{复现与证据}
+实验代码基线为 \code{ad395e94923bcf65fff4bc1eeb2e0e1505fd4f91}；Worker 集成基于 verl \code{87cd055e872f9fdd7b976fcd797a0934b6dba265}，模型版本为 \code{7ae557604adf67be50417f59c2c2f167def9a775}。Linux／Python 3.12 的独立 Worker 锁文件固定了 105 项依赖。仓库复现指南列出环境、模型哈希、命令及实验范围。
+
+公开结果摘要包含矩阵数据，证据清单通过 SHA-256 关联归档测量。GitHub CPU 任务在实验基线上报告 171 项通过、2 项取消选择、零跳过；它检查 CPU 回归和补丁适用性，不运行 GPU 基准。
+
+\begin{itemize}
+\item \href{https://github.com/yu830/rl-posttrain-sparse-scoring/blob/main/docs/experimental-reproduction.md}{实验复现指南}
+\item \href{https://github.com/yu830/rl-posttrain-sparse-scoring/blob/main/results/worker-benchmark-summary.json}{Worker 结果摘要}与\href{https://github.com/yu830/rl-posttrain-sparse-scoring/blob/main/results/worker-evidence-manifest.json}{证据清单}
+\item \href{https://github.com/yu830/rl-posttrain-sparse-scoring/actions/runs/41056928510}{GitHub Actions CPU 运行记录}
+\end{itemize}
+
+\section{结论}
+将行分块边界前移至 LM Head，使该 Teacher Worker 在保留消费者所需输出的同时降低了读出期间的分配峰值。单 GPU 实测、逐值输出对照和受限 Student 更新，为下一阶段集成提供了具体依据。
+
 \bibliographystyle{plainnat}
 \bibliography{docs/reports/references}
 \end{document}

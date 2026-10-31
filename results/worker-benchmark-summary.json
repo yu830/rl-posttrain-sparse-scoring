@@ -1,5 +1,5 @@
 {
-  "description": "Single-GPU real Teacher Worker, 30 October 2026; AI-assisted text and results pending Human review.",
+  "description": "Single-GPU real Teacher Worker, 30 October 2026.",
   "source_commit": "02730177fe5dd84a94bf404e6fff596f50e68cec",
   "model": "Qwen2.5-0.5B-Instruct",
   "model_revision": "7ae557604adf67be50417f59c2c2f167def9a775",
